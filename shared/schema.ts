@@ -61,7 +61,8 @@ export const postAnalyses = pgTable("post_analyses", {
 export const insertPostAnalysisSchema = createInsertSchema(postAnalyses).omit({
   id: true,
   createdAt: true,
-  completedAt: true,
+}).extend({
+  completedAt: z.date().optional().nullable(),
 });
 
 export type PostAnalysis = typeof postAnalyses.$inferSelect;

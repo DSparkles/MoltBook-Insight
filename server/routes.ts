@@ -90,6 +90,16 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/overall-stats", async (req, res) => {
+    try {
+      const stats = await storage.getOverallStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching overall stats:", error);
+      res.status(500).json({ error: "Failed to fetch overall stats" });
+    }
+  });
+
   return httpServer;
 }
 

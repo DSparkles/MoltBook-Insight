@@ -1,13 +1,21 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, BarChart3, MessageSquare, TrendingUp, Clock, ChevronRight } from "lucide-react";
+import { Loader2, Search, BarChart3, MessageSquare, TrendingUp, Clock, ChevronRight, Info, Globe } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { PostAnalysis } from "@shared/schema";
+import type { PostAnalysis, ReplyScores } from "@shared/schema";
+
+interface OverallStats {
+  totalAnalyses: number;
+  totalReplies: number;
+  totalCohesive: number;
+  totalSpam: number;
+  averageScores: ReplyScores | null;
+}
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -15,6 +23,10 @@ export default function Home() {
 
   const { data: recentAnalyses, isLoading: loadingRecent } = useQuery<PostAnalysis[]>({
     queryKey: ["/api/analyses"],
+  });
+
+  const { data: overallStats, isLoading: loadingStats } = useQuery<OverallStats>({
+    queryKey: ["/api/overall-stats"],
   });
 
   const analysisMutation = useMutation({
@@ -41,15 +53,23 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <div className="max-w-5xl mx-auto px-4 py-12">
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-primary-foreground" />
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <div className="inline-flex items-center gap-2">
+              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <h1 className="text-3xl font-bold tracking-tight">Moltbook Analyzer</h1>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight">Moltbook Analyzer</h1>
           </div>
           <p className="text-muted-foreground max-w-xl mx-auto text-lg">
             AI-powered analysis of Moltbook post replies. Evaluate cooperative intent, communication clarity, and more across 5 key dimensions.
           </p>
+          <Link href="/about">
+            <Button variant="ghost" className="mt-2" data-testid="link-about">
+              <Info className="w-4 h-4 mr-1" />
+              Learn about the 5 dimensions
+            </Button>
+          </Link>
         </div>
 
         <Card className="mb-8">
@@ -145,6 +165,86 @@ export default function Home() {
             </CardContent>
           </Card>
         </div>
+
+        {overallStats && overallStats.totalAnalyses > 0 && (
+          <Card className="mb-10">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Globe className="w-5 h-5" />
+                Overall Moltbook Analysis
+              </CardTitle>
+              <CardDescription>
+                Aggregated scores across {overallStats.totalAnalyses} analyzed posts and {overallStats.totalReplies} total replies
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="text-center p-4 rounded-lg bg-muted/50">
+                  <div className="text-2xl font-bold" data-testid="text-total-analyses">
+                    {overallStats.totalAnalyses}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Posts Analyzed</div>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-muted/50">
+                  <div className="text-2xl font-bold" data-testid="text-total-replies">
+                    {overallStats.totalReplies}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Total Replies</div>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-green-500/10">
+                  <div className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="text-total-cohesive">
+                    {overallStats.totalCohesive}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Cohesive & Helpful</div>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-red-500/10">
+                  <div className="text-2xl font-bold text-red-600 dark:text-red-400" data-testid="text-total-spam">
+                    {overallStats.totalSpam}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Argumentative & Spam</div>
+                </div>
+              </div>
+
+              {overallStats.averageScores && (
+                <div>
+                  <h4 className="font-medium mb-3 text-sm text-muted-foreground">Average Scores Across All Analyses (1-7 scale)</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                    <div className="flex flex-col items-center p-3 rounded-lg border">
+                      <div className="text-lg font-semibold text-blue-600 dark:text-blue-400" data-testid="text-avg-cooperative">
+                        {overallStats.averageScores.cooperativeIntent}
+                      </div>
+                      <div className="text-xs text-muted-foreground text-center">Cooperative Intent</div>
+                    </div>
+                    <div className="flex flex-col items-center p-3 rounded-lg border">
+                      <div className="text-lg font-semibold text-green-600 dark:text-green-400" data-testid="text-avg-clarity">
+                        {overallStats.averageScores.communicationClarity}
+                      </div>
+                      <div className="text-xs text-muted-foreground text-center">Clarity</div>
+                    </div>
+                    <div className="flex flex-col items-center p-3 rounded-lg border">
+                      <div className="text-lg font-semibold text-purple-600 dark:text-purple-400" data-testid="text-avg-knowledge">
+                        {overallStats.averageScores.knowledgeSharing}
+                      </div>
+                      <div className="text-xs text-muted-foreground text-center">Knowledge Sharing</div>
+                    </div>
+                    <div className="flex flex-col items-center p-3 rounded-lg border">
+                      <div className="text-lg font-semibold text-amber-600 dark:text-amber-400" data-testid="text-avg-ethical">
+                        {overallStats.averageScores.ethicalConsideration}
+                      </div>
+                      <div className="text-xs text-muted-foreground text-center">Ethical Consideration</div>
+                    </div>
+                    <div className="flex flex-col items-center p-3 rounded-lg border">
+                      <div className="text-lg font-semibold text-rose-600 dark:text-rose-400" data-testid="text-avg-alignment">
+                        {overallStats.averageScores.humanAlignment}
+                      </div>
+                      <div className="text-xs text-muted-foreground text-center">Human Alignment</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <div>
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
