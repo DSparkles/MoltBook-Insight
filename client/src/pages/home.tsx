@@ -29,6 +29,8 @@ export default function Home() {
 
   const { data: overallStats, isLoading: loadingStats } = useQuery<OverallStats>({
     queryKey: ["/api/overall-stats"],
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const analysisMutation = useMutation({
@@ -38,6 +40,7 @@ export default function Home() {
     },
     onSuccess: (data: PostAnalysis) => {
       queryClient.invalidateQueries({ queryKey: ["/api/analyses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/overall-stats"] });
       setLocation(`/analysis/${data.id}`);
     },
   });
