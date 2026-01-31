@@ -102,3 +102,28 @@ export const insertReplyAnalysisSchema = createInsertSchema(replyAnalyses).omit(
 
 export type ReplyAnalysis = typeof replyAnalyses.$inferSelect;
 export type InsertReplyAnalysis = z.infer<typeof insertReplyAnalysisSchema>;
+
+// Analyze sessions table - for 30-minute automated analysis runs
+export const analyzeSessions = pgTable("analyze_sessions", {
+  id: serial("id").primaryKey(),
+  name: text("name"),
+  status: text("status").notNull().default("active"), // active, completed, stopped
+  totalPostsAnalyzed: integer("total_posts_analyzed").default(0),
+  totalReplies: integer("total_replies").default(0),
+  cohesiveCount: integer("cohesive_count").default(0),
+  spamCount: integer("spam_count").default(0),
+  averageScores: jsonb("average_scores").$type<ReplyScores>(),
+  fetchCount: integer("fetch_count").default(0), // number of 5-minute fetches completed
+  nextFetchAt: timestamp("next_fetch_at"),
+  startedAt: timestamp("started_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  endsAt: timestamp("ends_at").notNull(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const insertAnalyzeSessionSchema = createInsertSchema(analyzeSessions).omit({
+  id: true,
+  startedAt: true,
+});
+
+export type AnalyzeSession = typeof analyzeSessions.$inferSelect;
+export type InsertAnalyzeSession = z.infer<typeof insertAnalyzeSessionSchema>;

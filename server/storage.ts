@@ -2,13 +2,16 @@ import { db } from "./db";
 import {
   postAnalyses,
   replyAnalyses,
+  analyzeSessions,
   type PostAnalysis,
   type InsertPostAnalysis,
   type ReplyAnalysis,
   type InsertReplyAnalysis,
+  type AnalyzeSession,
+  type InsertAnalyzeSession,
   type ReplyScores,
 } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, lte, and } from "drizzle-orm";
 
 export interface OverallStats {
   totalAnalyses: number;
@@ -132,6 +135,55 @@ export class DatabaseStorage implements IStorage {
       totalSpam,
       averageScores,
     };
+  }
+
+  async createAnalyzeSession(data: InsertAnalyzeSession): Promise<AnalyzeSession> {
+    const [result] = await db.insert(analyzeSessions).values(data).returning();
+    return result;
+  }
+
+  async getAnalyzeSession(id: number): Promise<AnalyzeSession | undefined> {
+    const [result] = await db.select().from(analyzeSessions).where(eq(analyzeSessions.id, id));
+    return result;
+  }
+
+  async getAllAnalyzeSessions(): Promise<AnalyzeSession[]> {
+    return db.select().from(analyzeSessions).orderBy(desc(analyzeSessions.startedAt));
+  }
+
+  async getActiveSession(): Promise<AnalyzeSession | undefined> {
+    const [result] = await db
+      .select()
+      .from(analyzeSessions)
+      .where(eq(analyzeSessions.status, "active"));
+    return result;
+  }
+
+  async getSessionsDueForFetch(): Promise<AnalyzeSession[]> {
+    const now = new Date();
+    return db
+      .select()
+      .from(analyzeSessions)
+      .where(
+        and(
+          eq(analyzeSessions.status, "active"),
+          lte(analyzeSessions.nextFetchAt, now)
+        )
+      );
+  }
+
+  async updateAnalyzeSession(id: number, data: Partial<InsertAnalyzeSession>): Promise<AnalyzeSession | undefined> {
+    const [result] = await db.update(analyzeSessions).set(data).where(eq(analyzeSessions.id, id)).returning();
+    return result;
+  }
+
+  async stopAnalyzeSession(id: number): Promise<AnalyzeSession | undefined> {
+    const [result] = await db
+      .update(analyzeSessions)
+      .set({ status: "stopped", completedAt: new Date() })
+      .where(eq(analyzeSessions.id, id))
+      .returning();
+    return result;
   }
 }
 
