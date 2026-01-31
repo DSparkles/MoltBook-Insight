@@ -24,6 +24,7 @@ import {
   Sparkles,
   AlertTriangle,
   Users,
+  Download,
 } from "lucide-react";
 import type { PostAnalysis, ReplyAnalysis, ReplyScores, PostIntent } from "@shared/schema";
 import { ScoreRadar } from "@/components/score-radar";
@@ -116,10 +117,21 @@ export default function AnalysisPage() {
             {analysis.status}
           </Badge>
           {!isProcessing && (
-            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isRefetching}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${isRefetching ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
+            <>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => window.open(`/api/analyses/${analysisId}/export`, "_blank")}
+                data-testid="button-download"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download CSV
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isRefetching}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${isRefetching ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
+            </>
           )}
         </div>
 

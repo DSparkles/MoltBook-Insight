@@ -100,6 +100,84 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/analyses/:id/export", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid analysis ID" });
+      }
+
+      const analysis = await storage.getPostAnalysis(id);
+      if (!analysis) {
+        return res.status(404).json({ error: "Analysis not found" });
+      }
+
+      const replies = await storage.getReplyAnalysesByPost(id);
+
+      const csvRows: string[] = [];
+      
+      csvRows.push("Moltbook Analysis Export");
+      csvRows.push(`Post URL,${analysis.postUrl}`);
+      csvRows.push(`Post Title,${(analysis.postTitle || "").replace(/,/g, ";")}`);
+      csvRows.push(`Post Author,${analysis.postAuthor || ""}`);
+      csvRows.push(`Post Intent,${analysis.postIntent || ""}`);
+      csvRows.push(`Status,${analysis.status}`);
+      csvRows.push(`Total Replies,${analysis.totalReplies}`);
+      csvRows.push(`Cohesive Count,${analysis.cohesiveCount}`);
+      csvRows.push(`Spam Count,${analysis.spamCount}`);
+      csvRows.push("");
+      
+      if (analysis.postScores) {
+        csvRows.push("Post Quality Scores");
+        csvRows.push(`Cooperative Intent,${analysis.postScores.cooperativeIntent}`);
+        csvRows.push(`Communication Clarity,${analysis.postScores.communicationClarity}`);
+        csvRows.push(`Knowledge Sharing,${analysis.postScores.knowledgeSharing}`);
+        csvRows.push(`Ethical Consideration,${analysis.postScores.ethicalConsideration}`);
+        csvRows.push(`Human Alignment,${analysis.postScores.humanAlignment}`);
+        csvRows.push("");
+      }
+      
+      if (analysis.averageScores) {
+        csvRows.push("Average Reply Scores");
+        csvRows.push(`Cooperative Intent,${analysis.averageScores.cooperativeIntent}`);
+        csvRows.push(`Communication Clarity,${analysis.averageScores.communicationClarity}`);
+        csvRows.push(`Knowledge Sharing,${analysis.averageScores.knowledgeSharing}`);
+        csvRows.push(`Ethical Consideration,${analysis.averageScores.ethicalConsideration}`);
+        csvRows.push(`Human Alignment,${analysis.averageScores.humanAlignment}`);
+        csvRows.push("");
+      }
+
+      csvRows.push("Reply Analysis");
+      csvRows.push("Author,Category,Cooperative Intent,Clarity,Knowledge Sharing,Ethics,Human Alignment,Reasoning,Content");
+      
+      for (const reply of replies) {
+        const content = reply.content.replace(/[\n\r]/g, " ").replace(/,/g, ";").slice(0, 200);
+        const reasoning = (reply.reasoning || "").replace(/[\n\r]/g, " ").replace(/,/g, ";");
+        csvRows.push([
+          reply.author,
+          reply.category === "cohesive_helpful" ? "Cohesive & Helpful" : "Argumentative & Spam",
+          reply.scores.cooperativeIntent,
+          reply.scores.communicationClarity,
+          reply.scores.knowledgeSharing,
+          reply.scores.ethicalConsideration,
+          reply.scores.humanAlignment,
+          reasoning,
+          content,
+        ].join(","));
+      }
+
+      const csv = csvRows.join("\n");
+      const filename = `moltbook-analysis-${id}.csv`;
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(csv);
+    } catch (error) {
+      console.error("Error exporting analysis:", error);
+      res.status(500).json({ error: "Failed to export analysis" });
+    }
+  });
+
   return httpServer;
 }
 

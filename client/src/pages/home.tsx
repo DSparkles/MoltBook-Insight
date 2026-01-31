@@ -288,7 +288,10 @@ export default function Home() {
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium truncate">
-                          {analysis.postTitle || "Untitled Post"}
+                          {analysis.postTitle || (() => {
+                            const match = analysis.postUrl.match(/\/post\/([^/]+)/);
+                            return match ? `Post ${match[1].slice(0, 8)}...` : "Moltbook Post";
+                          })()}
                         </h3>
                         <p className="text-sm text-muted-foreground truncate">
                           {analysis.postUrl}
