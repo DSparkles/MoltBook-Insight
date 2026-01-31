@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, BarChart3, MessageSquare, TrendingUp, Clock, ChevronRight, Info, Globe } from "lucide-react";
+import { Loader2, Search, BarChart3, MessageSquare, TrendingUp, Clock, ChevronRight, Info, Globe, Play, Square, Timer, RefreshCw } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { PostAnalysis, ReplyScores } from "@shared/schema";
+import type { PostAnalysis, ReplyScores, AnalyzeSession } from "@shared/schema";
 import { CategoryPieChart } from "@/components/category-pie-chart";
 import { ScoreRadar } from "@/components/score-radar";
 
@@ -22,13 +22,70 @@ interface OverallStats {
 export default function Home() {
   const [url, setUrl] = useState("");
   const [, setLocation] = useLocation();
+  const [timeRemaining, setTimeRemaining] = useState("");
 
   const { data: recentAnalyses, isLoading: loadingRecent } = useQuery<PostAnalysis[]>({
     queryKey: ["/api/analyses"],
+    refetchInterval: 5000,
   });
 
   const { data: overallStats, isLoading: loadingStats } = useQuery<OverallStats>({
     queryKey: ["/api/overall-stats"],
+    refetchInterval: 5000,
+  });
+
+  const { data: activeSession, isLoading: loadingSession } = useQuery<AnalyzeSession | null>({
+    queryKey: ["/api/sessions/active"],
+    refetchInterval: 3000,
+  });
+
+  // Update countdown timer
+  useEffect(() => {
+    if (!activeSession || activeSession.status !== "active") {
+      setTimeRemaining("");
+      return;
+    }
+
+    const updateTimer = () => {
+      const now = new Date().getTime();
+      const endsAt = new Date(activeSession.endsAt).getTime();
+      const diff = endsAt - now;
+
+      if (diff <= 0) {
+        setTimeRemaining("Completing...");
+        return;
+      }
+
+      const minutes = Math.floor(diff / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setTimeRemaining(`${minutes}:${seconds.toString().padStart(2, "0")}`);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [activeSession]);
+
+  const startSessionMutation = useMutation({
+    mutationFn: async () => {
+      const result = await apiRequest("POST", "/api/sessions/start");
+      return result.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sessions/active"] });
+    },
+  });
+
+  const stopSessionMutation = useMutation({
+    mutationFn: async (sessionId: number) => {
+      const result = await apiRequest("POST", `/api/sessions/${sessionId}/stop`);
+      return result.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sessions/active"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/analyses"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/overall-stats"] });
+    },
   });
 
   const analysisMutation = useMutation({
@@ -116,6 +173,123 @@ export default function Home() {
               <p className="text-sm text-destructive mt-3">
                 Failed to start analysis. Please try again.
               </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="mb-8">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Timer className="w-5 h-5" />
+              Automated Analyze Session
+            </CardTitle>
+            <CardDescription>
+              Start a 30-minute session that automatically fetches and analyzes new Moltbook posts every 5 minutes
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {activeSession && activeSession.status === "active" ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+                    <div>
+                      <div className="font-medium text-green-700 dark:text-green-400">Session Active</div>
+                      <div className="text-sm text-muted-foreground">
+                        Fetch #{activeSession.fetchCount || 0} completed • Next fetch in 5 min
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-green-700 dark:text-green-400" data-testid="text-session-time">
+                      {timeRemaining}
+                    </div>
+                    <div className="text-xs text-muted-foreground">remaining</div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="text-center p-3 rounded-lg bg-muted/50">
+                    <div className="text-xl font-bold" data-testid="text-session-posts">
+                      {activeSession.totalPostsAnalyzed || 0}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Posts Analyzed</div>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-muted/50">
+                    <div className="text-xl font-bold" data-testid="text-session-replies">
+                      {activeSession.totalReplies || 0}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Replies</div>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-green-500/10">
+                    <div className="text-xl font-bold text-green-600 dark:text-green-400" data-testid="text-session-cohesive">
+                      {activeSession.cohesiveCount || 0}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Cohesive</div>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-red-500/10">
+                    <div className="text-xl font-bold text-red-600 dark:text-red-400" data-testid="text-session-spam">
+                      {activeSession.spamCount || 0}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Spam</div>
+                  </div>
+                </div>
+
+                <Button
+                  variant="destructive"
+                  onClick={() => stopSessionMutation.mutate(activeSession.id)}
+                  disabled={stopSessionMutation.isPending}
+                  className="w-full"
+                  data-testid="button-stop-session"
+                >
+                  {stopSessionMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Stopping...
+                    </>
+                  ) : (
+                    <>
+                      <Square className="w-4 h-4 mr-2" />
+                      Stop Session
+                    </>
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 p-4 rounded-lg border">
+                  <RefreshCw className="w-8 h-8 text-muted-foreground" />
+                  <div className="flex-1">
+                    <div className="font-medium">Auto-Fetch Mode</div>
+                    <div className="text-sm text-muted-foreground">
+                      Fetches up to 3 posts every 5 minutes for 30 minutes (6 rounds total)
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => startSessionMutation.mutate()}
+                  disabled={startSessionMutation.isPending}
+                  className="w-full"
+                  data-testid="button-start-session"
+                >
+                  {startSessionMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Starting...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 mr-2" />
+                      Start 30-Minute Session
+                    </>
+                  )}
+                </Button>
+                {startSessionMutation.error && (
+                  <p className="text-sm text-destructive">
+                    Failed to start session. Please try again.
+                  </p>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>

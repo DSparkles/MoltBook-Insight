@@ -13,6 +13,17 @@ const createAnalysisSchema = z.object({
   ),
 });
 
+// Track analyzed URLs per session to avoid duplicates
+const sessionAnalyzedUrls = new Map<number, Set<string>>();
+// Track which sessions are currently fetching to prevent concurrent runs
+const sessionFetchLocks = new Set<number>();
+
+// Cleanup function to remove tracking data for a session
+function cleanupSession(sessionId: number): void {
+  sessionAnalyzedUrls.delete(sessionId);
+  sessionFetchLocks.delete(sessionId);
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -260,6 +271,8 @@ export async function registerRoutes(
       if (!session) {
         return res.status(404).json({ error: "Session not found" });
       }
+      // Cleanup session tracking data
+      cleanupSession(id);
       res.json(session);
     } catch (error) {
       console.error("Error stopping session:", error);
@@ -278,6 +291,8 @@ export async function registerRoutes(
             status: "completed",
             completedAt: new Date(),
           });
+          // Cleanup session tracking data
+          cleanupSession(session.id);
           console.log(`Session ${session.id} completed (30 minutes elapsed)`);
           continue;
         }
@@ -378,13 +393,19 @@ async function processAnalysis(analysisId: number, postUrl: string): Promise<voi
   }
 }
 
-// Track analyzed URLs per session to avoid duplicates
-const sessionAnalyzedUrls = new Map<number, Set<string>>();
-
 async function processSessionFetch(sessionId: number): Promise<void> {
+  // Prevent concurrent fetches for the same session
+  if (sessionFetchLocks.has(sessionId)) {
+    console.log(`Session ${sessionId}: Fetch already in progress, skipping`);
+    return;
+  }
+
   try {
+    sessionFetchLocks.add(sessionId);
+
     const session = await storage.getAnalyzeSession(sessionId);
     if (!session || session.status !== "active") {
+      cleanupSession(sessionId);
       return;
     }
 
@@ -463,5 +484,8 @@ async function processSessionFetch(sessionId: number): Promise<void> {
         nextFetchAt: new Date(Date.now() + 5 * 60 * 1000),
       });
     }
+  } finally {
+    // Always release the lock
+    sessionFetchLocks.delete(sessionId);
   }
 }
