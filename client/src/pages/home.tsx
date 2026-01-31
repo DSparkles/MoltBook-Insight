@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Search, BarChart3, MessageSquare, TrendingUp, Clock, ChevronRight, Info, Globe } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { PostAnalysis, ReplyScores } from "@shared/schema";
+import { CategoryPieChart } from "@/components/category-pie-chart";
+import { ScoreRadar } from "@/components/score-radar";
 
 interface OverallStats {
   totalAnalyses: number;
@@ -205,9 +207,25 @@ export default function Home() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="p-4 rounded-lg border">
+                  <h4 className="font-medium mb-2 text-sm text-center">Category Distribution</h4>
+                  <CategoryPieChart 
+                    cohesive={overallStats.totalCohesive} 
+                    spam={overallStats.totalSpam} 
+                  />
+                </div>
+                {overallStats.averageScores && (
+                  <div className="p-4 rounded-lg border">
+                    <h4 className="font-medium mb-2 text-sm text-center">Average Dimension Scores</h4>
+                    <ScoreRadar scores={overallStats.averageScores} />
+                  </div>
+                )}
+              </div>
+
               {overallStats.averageScores && (
                 <div>
-                  <h4 className="font-medium mb-3 text-sm text-muted-foreground">Average Scores Across All Analyses (1-7 scale)</h4>
+                  <h4 className="font-medium mb-3 text-sm text-muted-foreground">Score Breakdown (1-7 scale)</h4>
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                     <div className="flex flex-col items-center p-3 rounded-lg border">
                       <div className="text-lg font-semibold text-blue-600 dark:text-blue-400" data-testid="text-avg-cooperative">
