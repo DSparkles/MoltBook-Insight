@@ -2,9 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { z } from "zod";
 import { storage } from "./storage";
-import { scrapePost, scrapeFeed } from "./scraper";
+import { scrapePost } from "./scraper";
 import { analyzeReply, analyzePost, calculateAverageScores } from "./analyzer";
-import type { ReplyScores, AnalyzeSession } from "@shared/schema";
+import type { ReplyScores } from "@shared/schema";
 
 const createAnalysisSchema = z.object({
   postUrl: z.string().url().refine(
@@ -12,17 +12,6 @@ const createAnalysisSchema = z.object({
     { message: "Must be a valid Moltbook post URL" }
   ),
 });
-
-// Track analyzed URLs per session to avoid duplicates
-const sessionAnalyzedUrls = new Map<number, Set<string>>();
-// Track which sessions are currently fetching to prevent concurrent runs
-const sessionFetchLocks = new Set<number>();
-
-// Cleanup function to remove tracking data for a session
-function cleanupSession(sessionId: number): void {
-  sessionAnalyzedUrls.delete(sessionId);
-  sessionFetchLocks.delete(sessionId);
-}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -189,121 +178,6 @@ export async function registerRoutes(
     }
   });
 
-  // Analyze Sessions API
-  app.get("/api/sessions", async (req, res) => {
-    try {
-      const sessions = await storage.getAllAnalyzeSessions();
-      res.json(sessions);
-    } catch (error) {
-      console.error("Error fetching sessions:", error);
-      res.status(500).json({ error: "Failed to fetch sessions" });
-    }
-  });
-
-  app.get("/api/sessions/active", async (req, res) => {
-    try {
-      const session = await storage.getActiveSession();
-      res.json(session || null);
-    } catch (error) {
-      console.error("Error fetching active session:", error);
-      res.status(500).json({ error: "Failed to fetch active session" });
-    }
-  });
-
-  app.get("/api/sessions/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ error: "Invalid session ID" });
-      }
-      const session = await storage.getAnalyzeSession(id);
-      if (!session) {
-        return res.status(404).json({ error: "Session not found" });
-      }
-      res.json(session);
-    } catch (error) {
-      console.error("Error fetching session:", error);
-      res.status(500).json({ error: "Failed to fetch session" });
-    }
-  });
-
-  app.post("/api/sessions/start", async (req, res) => {
-    try {
-      // Check if there's already an active session
-      const activeSession = await storage.getActiveSession();
-      if (activeSession) {
-        return res.status(400).json({ error: "An analyze session is already active" });
-      }
-
-      const now = new Date();
-      const endsAt = new Date(now.getTime() + 30 * 60 * 1000); // 30 minutes from now
-      const nextFetchAt = now; // Start immediately
-
-      const session = await storage.createAnalyzeSession({
-        name: `Session ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`,
-        status: "active",
-        endsAt,
-        nextFetchAt,
-        fetchCount: 0,
-        totalPostsAnalyzed: 0,
-        totalReplies: 0,
-        cohesiveCount: 0,
-        spamCount: 0,
-      });
-
-      res.status(201).json(session);
-
-      // Trigger the first fetch immediately
-      processSessionFetch(session.id).catch(console.error);
-    } catch (error) {
-      console.error("Error starting session:", error);
-      res.status(500).json({ error: "Failed to start session" });
-    }
-  });
-
-  app.post("/api/sessions/:id/stop", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ error: "Invalid session ID" });
-      }
-      const session = await storage.stopAnalyzeSession(id);
-      if (!session) {
-        return res.status(404).json({ error: "Session not found" });
-      }
-      // Cleanup session tracking data
-      cleanupSession(id);
-      res.json(session);
-    } catch (error) {
-      console.error("Error stopping session:", error);
-      res.status(500).json({ error: "Failed to stop session" });
-    }
-  });
-
-  // Background job: check for sessions due for fetch every minute
-  setInterval(async () => {
-    try {
-      const sessions = await storage.getSessionsDueForFetch();
-      for (const session of sessions) {
-        // Check if session has ended
-        if (new Date() >= new Date(session.endsAt)) {
-          await storage.updateAnalyzeSession(session.id, {
-            status: "completed",
-            completedAt: new Date(),
-          });
-          // Cleanup session tracking data
-          cleanupSession(session.id);
-          console.log(`Session ${session.id} completed (30 minutes elapsed)`);
-          continue;
-        }
-
-        processSessionFetch(session.id).catch(console.error);
-      }
-    } catch (error) {
-      console.error("Error in session background job:", error);
-    }
-  }, 60 * 1000); // Check every minute
-
   return httpServer;
 }
 
@@ -390,102 +264,5 @@ async function processAnalysis(analysisId: number, postUrl: string): Promise<voi
     await storage.updatePostAnalysis(analysisId, {
       status: "failed",
     });
-  }
-}
-
-async function processSessionFetch(sessionId: number): Promise<void> {
-  // Prevent concurrent fetches for the same session
-  if (sessionFetchLocks.has(sessionId)) {
-    console.log(`Session ${sessionId}: Fetch already in progress, skipping`);
-    return;
-  }
-
-  try {
-    sessionFetchLocks.add(sessionId);
-
-    const session = await storage.getAnalyzeSession(sessionId);
-    if (!session || session.status !== "active") {
-      cleanupSession(sessionId);
-      return;
-    }
-
-    console.log(`Session ${sessionId}: Starting fetch #${(session.fetchCount || 0) + 1}`);
-
-    // Initialize URL tracking for this session
-    if (!sessionAnalyzedUrls.has(sessionId)) {
-      sessionAnalyzedUrls.set(sessionId, new Set());
-    }
-    const analyzedUrls = sessionAnalyzedUrls.get(sessionId)!;
-
-    // Fetch posts from feed
-    const feedPosts = await scrapeFeed();
-    
-    // Filter out already analyzed posts
-    const newPosts = feedPosts.filter(p => !analyzedUrls.has(p.url));
-    
-    console.log(`Session ${sessionId}: Found ${newPosts.length} new posts to analyze`);
-
-    let totalNewReplies = 0;
-    let newCohesive = 0;
-    let newSpam = 0;
-
-    // Analyze up to 3 new posts per fetch to stay within rate limits
-    const postsToAnalyze = newPosts.slice(0, 3);
-    
-    for (const feedPost of postsToAnalyze) {
-      try {
-        analyzedUrls.add(feedPost.url);
-
-        // Create analysis record
-        const analysis = await storage.createPostAnalysis({
-          postUrl: feedPost.url,
-          status: "pending",
-        });
-
-        // Process the analysis (reuse existing logic)
-        await processAnalysis(analysis.id, feedPost.url);
-
-        // Get the completed analysis to update session stats
-        const completedAnalysis = await storage.getPostAnalysis(analysis.id);
-        if (completedAnalysis && completedAnalysis.status === "completed") {
-          totalNewReplies += completedAnalysis.totalReplies || 0;
-          newCohesive += completedAnalysis.cohesiveCount || 0;
-          newSpam += completedAnalysis.spamCount || 0;
-        }
-      } catch (error) {
-        console.error(`Session ${sessionId}: Error analyzing ${feedPost.url}:`, error);
-      }
-    }
-
-    // Update session stats
-    const updatedSession = await storage.getAnalyzeSession(sessionId);
-    if (updatedSession) {
-      const newFetchCount = (updatedSession.fetchCount || 0) + 1;
-      const nextFetchTime = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
-
-      await storage.updateAnalyzeSession(sessionId, {
-        fetchCount: newFetchCount,
-        totalPostsAnalyzed: (updatedSession.totalPostsAnalyzed || 0) + postsToAnalyze.length,
-        totalReplies: (updatedSession.totalReplies || 0) + totalNewReplies,
-        cohesiveCount: (updatedSession.cohesiveCount || 0) + newCohesive,
-        spamCount: (updatedSession.spamCount || 0) + newSpam,
-        nextFetchAt: nextFetchTime,
-      });
-
-      console.log(`Session ${sessionId}: Fetch #${newFetchCount} complete. Next fetch at ${nextFetchTime.toLocaleTimeString()}`);
-    }
-  } catch (error) {
-    console.error(`Session ${sessionId}: Fetch failed:`, error);
-    
-    // Still schedule the next fetch on error
-    const session = await storage.getAnalyzeSession(sessionId);
-    if (session && session.status === "active") {
-      await storage.updateAnalyzeSession(sessionId, {
-        nextFetchAt: new Date(Date.now() + 5 * 60 * 1000),
-      });
-    }
-  } finally {
-    // Always release the lock
-    sessionFetchLocks.delete(sessionId);
   }
 }

@@ -37,12 +37,12 @@ client/src/
 server/
 ├── routes.ts      # API endpoints
 ├── storage.ts     # Database operations
-├── scraper.ts     # Post and feed scraping with Puppeteer
+├── scraper.ts     # Post data collection (uses demo data)
 ├── analyzer.ts    # AI analysis with OpenAI
 └── db.ts          # Database connection
 
 shared/
-└── schema.ts      # Drizzle schema for postAnalyses, replyAnalyses, analyzeSessions
+└── schema.ts      # Drizzle schema for postAnalyses and replyAnalyses
 ```
 
 ## API Endpoints
@@ -50,23 +50,8 @@ shared/
 - `GET /api/analyses` - List all analyses
 - `POST /api/analyses` - Create new analysis (body: `{ postUrl: string }`)
 - `GET /api/analyses/:id` - Get analysis with all reply data
-- `GET /api/analyses/:id/export` - Export analysis as CSV
 - `DELETE /api/analyses/:id` - Delete an analysis
 - `GET /api/overall-stats` - Get aggregated stats across all completed analyses
-- `GET /api/sessions` - List all analyze sessions
-- `GET /api/sessions/active` - Get the currently active session
-- `GET /api/sessions/:id` - Get a specific session
-- `POST /api/sessions/start` - Start a new 30-minute analyze session
-- `POST /api/sessions/:id/stop` - Stop an active session
-
-## Automated Analyze Sessions
-
-The app supports automated 30-minute sessions that fetch and analyze new posts every 5 minutes:
-- Start a session from the home page
-- Fetches up to 3 new posts every 5 minutes (6 rounds total)
-- Aggregates statistics across all analyzed posts
-- Live countdown timer and progress stats
-- Can be stopped manually at any time
 
 ## Important Notes
 
