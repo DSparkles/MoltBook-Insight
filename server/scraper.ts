@@ -28,82 +28,110 @@ export async function scrapePost(postUrl: string): Promise<MoltbookPost> {
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     );
 
+    console.log(`Scraping: ${postUrl}`);
+    
     await page.goto(postUrl, { 
       waitUntil: "networkidle2",
       timeout: 30000,
     });
 
-    await page.waitForSelector("article, .post, [data-testid]", { timeout: 10000 }).catch(() => {
-      console.log("No specific selectors found, will try to extract content anyway");
-    });
-
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
     const title = await page.$eval("h1", (el) => el.textContent?.trim() || "").catch(() => 
       page.$eval("h2", (el) => el.textContent?.trim() || "").catch(() => "Moltbook Post")
     );
 
-    const content = await page.$$eval("article p, main p", (elements) => 
-      elements.slice(0, 3).map((p) => p.textContent?.trim() || "").join(" ")
-    ).catch(() => "");
+    console.log(`Found title: ${title}`);
 
-    let replies: Array<{ author: string; content: string; votes: number }> = [];
-    
-    try {
-      replies = await page.$$eval(
-        "[class*='reply'], [class*='comment'], [class*='response'], article:not(:first-of-type), .prose",
-        (containers) => {
-          const results: Array<{ author: string; content: string; votes: number }> = [];
-          
-          containers.forEach((container) => {
-            const replyText = container.textContent?.trim() || "";
-            if (replyText.length > 10 && replyText.length < 2000) {
-              const authorEl = container.querySelector("[class*='author'], [class*='user'], [class*='name']");
-              const replyAuthor = authorEl?.textContent?.trim() || "Anonymous";
-              
-              const contentEl = container.querySelector("p, [class*='content'], [class*='text']");
-              const replyContent = contentEl?.textContent?.trim() || replyText.slice(0, 500);
-
-              if (replyContent.length > 5) {
-                results.push({
-                  author: replyAuthor.slice(0, 50),
-                  content: replyContent,
-                  votes: 0,
-                });
-              }
-            }
-          });
-          
-          return results;
-        }
-      );
-    } catch {
-      replies = [];
-    }
-
-    if (replies.length === 0) {
-      try {
-        const paragraphs = await page.$$eval("p", (elements) => {
-          return elements
-            .map((p, index) => ({ text: p.textContent?.trim() || "", index }))
-            .filter(({ text, index }) => text.length > 20 && text.length < 1500 && index > 0)
-            .map(({ text, index }) => ({
-              author: `User${index}`,
-              content: text,
-              votes: 0,
-            }));
-        });
-        
+    const content = await page.evaluate(() => {
+      const mainContent = document.querySelector("main, article, .post, .content");
+      if (mainContent) {
+        const paragraphs = mainContent.querySelectorAll("p");
         if (paragraphs.length > 0) {
-          replies.push(...paragraphs);
+          return Array.from(paragraphs).slice(0, 5).map(p => p.textContent?.trim() || "").join(" ");
         }
-      } catch {
-        // No paragraphs found
       }
+      const allP = document.querySelectorAll("p");
+      return Array.from(allP).slice(0, 3).map(p => p.textContent?.trim() || "").join(" ");
+    });
+
+    console.log(`Found content length: ${content.length}`);
+
+    const replies: Array<{ author: string; content: string; votes: number }> = [];
+
+    const extractedReplies = await page.evaluate(() => {
+      const results: Array<{ author: string; content: string; votes: number }> = [];
+      
+      const replySelectors = [
+        "[class*='comment']",
+        "[class*='reply']", 
+        "[class*='response']",
+        "[data-testid*='comment']",
+        "[data-testid*='reply']",
+        ".message",
+        ".post-reply",
+      ];
+      
+      for (const selector of replySelectors) {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach((el) => {
+          const text = el.textContent?.trim() || "";
+          if (text.length > 10 && text.length < 3000 && !results.some(r => r.content === text)) {
+            const authorEl = el.querySelector("[class*='author'], [class*='user'], [class*='name'], .username");
+            const author = authorEl?.textContent?.trim()?.slice(0, 50) || "Anonymous";
+            
+            const contentEl = el.querySelector("p, .text, .content, .body");
+            const replyContent = contentEl?.textContent?.trim() || text.slice(0, 1000);
+            
+            if (replyContent.length > 5 && !results.some(r => r.content === replyContent)) {
+              results.push({
+                author,
+                content: replyContent,
+                votes: 0,
+              });
+            }
+          }
+        });
+      }
+
+      if (results.length === 0) {
+        const allDivs = document.querySelectorAll("div");
+        allDivs.forEach((div) => {
+          const text = div.textContent?.trim() || "";
+          const directText = Array.from(div.childNodes)
+            .filter(node => node.nodeType === Node.TEXT_NODE || node.nodeName === "P")
+            .map(node => node.textContent?.trim() || "")
+            .join(" ")
+            .trim();
+          
+          if (directText.length > 30 && directText.length < 2000) {
+            const hasAuthorIndicator = div.querySelector("[class*='author'], [class*='user'], img[alt]");
+            if (hasAuthorIndicator && !results.some(r => r.content.includes(directText.slice(0, 50)))) {
+              const author = hasAuthorIndicator.getAttribute("alt") || 
+                            hasAuthorIndicator.textContent?.trim()?.slice(0, 50) || 
+                            "User";
+              results.push({
+                author,
+                content: directText,
+                votes: 0,
+              });
+            }
+          }
+        });
+      }
+
+      return results;
+    });
+
+    replies.push(...extractedReplies);
+    console.log(`Found ${replies.length} replies`);
+
+    if (title.toLowerCase().includes("not found") || title.toLowerCase().includes("404")) {
+      throw new Error("Post not found. This post may have been deleted or the URL is incorrect.");
     }
 
-    if (replies.length === 0) {
-      throw new Error("No replies found on the page. The page structure may have changed or be inaccessible.");
+    if (replies.length === 0 && content.length < 50) {
+      throw new Error("Could not extract content from the page. The page may require authentication or has an unexpected structure.");
     }
 
     return {
