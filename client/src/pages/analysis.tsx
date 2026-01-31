@@ -16,8 +16,16 @@ import {
   Loader2,
   ExternalLink,
   RefreshCw,
+  FileText,
+  Target,
+  BookOpen,
+  HelpCircle,
+  Megaphone,
+  Sparkles,
+  AlertTriangle,
+  Users,
 } from "lucide-react";
-import type { PostAnalysis, ReplyAnalysis, ReplyScores } from "@shared/schema";
+import type { PostAnalysis, ReplyAnalysis, ReplyScores, PostIntent } from "@shared/schema";
 import { ScoreRadar } from "@/components/score-radar";
 import { CategoryPieChart } from "@/components/category-pie-chart";
 import { ReplyCard } from "@/components/reply-card";
@@ -25,6 +33,16 @@ import { ReplyCard } from "@/components/reply-card";
 interface AnalysisWithReplies extends PostAnalysis {
   replies: ReplyAnalysis[];
 }
+
+const intentConfig: Record<string, { label: string; icon: typeof FileText; color: string }> = {
+  informative: { label: "Informative", icon: BookOpen, color: "text-blue-600 dark:text-blue-400" },
+  discussion: { label: "Discussion", icon: MessageSquare, color: "text-purple-600 dark:text-purple-400" },
+  question: { label: "Question", icon: HelpCircle, color: "text-amber-600 dark:text-amber-400" },
+  announcement: { label: "Announcement", icon: Megaphone, color: "text-green-600 dark:text-green-400" },
+  promotional: { label: "Promotional", icon: Sparkles, color: "text-pink-600 dark:text-pink-400" },
+  provocative: { label: "Provocative", icon: AlertTriangle, color: "text-red-600 dark:text-red-400" },
+  collaborative: { label: "Collaborative", icon: Users, color: "text-teal-600 dark:text-teal-400" },
+};
 
 export default function AnalysisPage() {
   const [, params] = useRoute("/analysis/:id");
@@ -123,6 +141,57 @@ export default function AnalysisPage() {
                   className="mt-4"
                 />
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Original Post Analysis */}
+        {analysis.postIntent && analysis.postScores && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Original Post Analysis
+              </CardTitle>
+              <CardDescription>AI evaluation of the post's intent and quality</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-muted-foreground mb-2">Post Intent</h4>
+                    {(() => {
+                      const config = intentConfig[analysis.postIntent as string] || intentConfig.discussion;
+                      const IconComponent = config.icon;
+                      return (
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg bg-muted ${config.color}`}>
+                            <IconComponent className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <div className={`text-xl font-bold ${config.color}`} data-testid="text-post-intent">
+                              {config.label}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              Primary intent classification
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  {analysis.postIntentReasoning && (
+                    <div className="p-3 rounded-lg bg-muted/50 text-sm" data-testid="text-post-reasoning">
+                      <span className="font-medium">Analysis: </span>
+                      {analysis.postIntentReasoning}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-2 text-center">Post Quality Scores</h4>
+                  <ScoreRadar scores={analysis.postScores} />
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}
