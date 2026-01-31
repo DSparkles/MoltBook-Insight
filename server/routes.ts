@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { z } from "zod";
 import { storage } from "./storage";
 import { scrapePost } from "./scraper";
-import { analyzeReply, calculateAverageScores } from "./analyzer";
+import { analyzeReply, analyzePost, calculateAverageScores } from "./analyzer";
 import type { ReplyScores } from "@shared/schema";
 
 const createAnalysisSchema = z.object({
@@ -115,6 +115,22 @@ async function processAnalysis(analysisId: number, postUrl: string): Promise<voi
       postContent: postData.content.slice(0, 5000),
       totalReplies: postData.replies.length,
     });
+
+    // Analyze the original post intent
+    try {
+      const postAnalysisResult = await analyzePost(
+        postData.title,
+        postData.content,
+        postData.author
+      );
+      await storage.updatePostAnalysis(analysisId, {
+        postIntent: postAnalysisResult.intent,
+        postScores: postAnalysisResult.scores,
+        postIntentReasoning: postAnalysisResult.reasoning,
+      });
+    } catch (error) {
+      console.error("Error analyzing post intent:", error);
+    }
 
     let cohesiveCount = 0;
     let spamCount = 0;
