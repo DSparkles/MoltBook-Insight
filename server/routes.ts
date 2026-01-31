@@ -194,20 +194,28 @@ async function processAnalysis(analysisId: number, postUrl: string): Promise<voi
       totalReplies: postData.replies.length,
     });
 
-    // Analyze the original post intent
-    try {
-      const postAnalysisResult = await analyzePost(
-        postData.title,
-        postData.content,
-        postData.author
-      );
-      await storage.updatePostAnalysis(analysisId, {
-        postIntent: postAnalysisResult.intent,
-        postScores: postAnalysisResult.scores,
-        postIntentReasoning: postAnalysisResult.reasoning,
-      });
-    } catch (error) {
-      console.error("Error analyzing post intent:", error);
+    // Analyze the original post intent with retry
+    let postIntentSuccess = false;
+    for (let attempt = 0; attempt < 3 && !postIntentSuccess; attempt++) {
+      try {
+        if (attempt > 0) {
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+        }
+        const postAnalysisResult = await analyzePost(
+          postData.title,
+          postData.content,
+          postData.author
+        );
+        await storage.updatePostAnalysis(analysisId, {
+          postIntent: postAnalysisResult.intent,
+          postScores: postAnalysisResult.scores,
+          postIntentReasoning: postAnalysisResult.reasoning,
+        });
+        postIntentSuccess = true;
+        console.log(`Post intent analysis completed: ${postAnalysisResult.intent}`);
+      } catch (error) {
+        console.error(`Error analyzing post intent (attempt ${attempt + 1}/3):`, error);
+      }
     }
 
     let cohesiveCount = 0;
