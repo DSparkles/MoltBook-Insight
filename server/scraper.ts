@@ -51,6 +51,10 @@ export async function scrapePost(postUrl: string): Promise<MoltbookPost> {
           return Array.from(paragraphs).slice(0, 5).map(p => p.textContent?.trim() || "").join(" ");
         }
       }
+      const firstProse = document.querySelector(".prose");
+      if (firstProse) {
+        return firstProse.textContent?.trim().slice(0, 1500) || "";
+      }
       const allP = document.querySelectorAll("p");
       return Array.from(allP).slice(0, 3).map(p => p.textContent?.trim() || "").join(" ");
     });
@@ -62,62 +66,60 @@ export async function scrapePost(postUrl: string): Promise<MoltbookPost> {
     const extractedReplies = await page.evaluate(() => {
       const results: Array<{ author: string; content: string; votes: number }> = [];
       
-      const replySelectors = [
-        "[class*='comment']",
-        "[class*='reply']", 
-        "[class*='response']",
-        "[data-testid*='comment']",
-        "[data-testid*='reply']",
-        ".message",
-        ".post-reply",
-      ];
+      const proseElements = document.querySelectorAll(".prose");
       
-      for (const selector of replySelectors) {
-        const elements = document.querySelectorAll(selector);
-        elements.forEach((el) => {
-          const text = el.textContent?.trim() || "";
-          if (text.length > 10 && text.length < 3000 && !results.some(r => r.content === text)) {
-            const authorEl = el.querySelector("[class*='author'], [class*='user'], [class*='name'], .username");
-            const author = authorEl?.textContent?.trim()?.slice(0, 50) || "Anonymous";
-            
-            const contentEl = el.querySelector("p, .text, .content, .body");
-            const replyContent = contentEl?.textContent?.trim() || text.slice(0, 1000);
-            
-            if (replyContent.length > 5 && !results.some(r => r.content === replyContent)) {
-              results.push({
-                author,
-                content: replyContent,
-                votes: 0,
-              });
+      proseElements.forEach((el, idx) => {
+        if (idx === 0) return;
+        
+        const text = el.textContent?.trim() || "";
+        if (text.length > 10 && text.length < 3000) {
+          const parentContainer = el.closest("div[class*='border'], div[class*='rounded'], div[class*='bg-']");
+          
+          let author = "Anonymous";
+          if (parentContainer) {
+            const imgEl = parentContainer.querySelector("img[alt]") as HTMLImageElement;
+            if (imgEl?.alt) {
+              author = imgEl.alt.slice(0, 50);
             }
           }
-        });
-      }
+          
+          if (!results.some(r => r.content === text)) {
+            results.push({
+              author,
+              content: text.slice(0, 1500),
+              votes: 0,
+            });
+          }
+        }
+      });
 
       if (results.length === 0) {
-        const allDivs = document.querySelectorAll("div");
-        allDivs.forEach((div) => {
-          const text = div.textContent?.trim() || "";
-          const directText = Array.from(div.childNodes)
-            .filter(node => node.nodeType === Node.TEXT_NODE || node.nodeName === "P")
-            .map(node => node.textContent?.trim() || "")
-            .join(" ")
-            .trim();
-          
-          if (directText.length > 30 && directText.length < 2000) {
-            const hasAuthorIndicator = div.querySelector("[class*='author'], [class*='user'], img[alt]");
-            if (hasAuthorIndicator && !results.some(r => r.content.includes(directText.slice(0, 50)))) {
-              const author = hasAuthorIndicator.getAttribute("alt") || 
-                            hasAuthorIndicator.textContent?.trim()?.slice(0, 50) || 
-                            "User";
+        const replySelectors = [
+          "[class*='Comment']",
+          "[class*='comment']",
+          "[class*='Reply']",
+          "[class*='reply']",
+          "[class*='response']",
+        ];
+        
+        for (const selector of replySelectors) {
+          const elements = document.querySelectorAll(selector);
+          elements.forEach((el) => {
+            const text = el.textContent?.trim() || "";
+            if (text.length > 10 && text.length < 3000 && !results.some(r => r.content === text)) {
+              const authorEl = el.querySelector("[class*='author'], [class*='user'], [class*='name'], img[alt]");
+              const author = (authorEl as HTMLImageElement)?.alt || 
+                            authorEl?.textContent?.trim()?.slice(0, 50) || 
+                            "Anonymous";
+              
               results.push({
                 author,
-                content: directText,
+                content: text.slice(0, 1500),
                 votes: 0,
               });
             }
-          }
-        });
+          });
+        }
       }
 
       return results;
