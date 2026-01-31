@@ -51,6 +51,7 @@ shared/
 - `POST /api/analyses` - Create new analysis (body: `{ postUrl: string }`)
 - `GET /api/analyses/:id` - Get analysis with all reply data
 - `DELETE /api/analyses/:id` - Delete an analysis
+- `GET /api/overall-stats` - Get aggregated stats across all completed analyses
 
 ## Important Notes
 
