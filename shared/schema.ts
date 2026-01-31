@@ -42,6 +42,18 @@ export const scrapedReplySchema = z.object({
 
 export type ScrapedReply = z.infer<typeof scrapedReplySchema>;
 
+// Post intent categories
+export const postIntentEnum = z.enum([
+  "informative",      // Sharing news, information, updates
+  "discussion",       // Inviting conversation/debate
+  "question",         // Asking for help/answers
+  "announcement",     // Making announcements
+  "promotional",      // Self-promotion, marketing
+  "provocative",      // Controversial, attention-seeking
+  "collaborative"     // Seeking collaboration/partnership
+]);
+export type PostIntent = z.infer<typeof postIntentEnum>;
+
 // Post analysis table
 export const postAnalyses = pgTable("post_analyses", {
   id: serial("id").primaryKey(),
@@ -53,6 +65,9 @@ export const postAnalyses = pgTable("post_analyses", {
   cohesiveCount: integer("cohesive_count").default(0),
   spamCount: integer("spam_count").default(0),
   averageScores: jsonb("average_scores").$type<ReplyScores>(),
+  postIntent: text("post_intent"),
+  postScores: jsonb("post_scores").$type<ReplyScores>(),
+  postIntentReasoning: text("post_intent_reasoning"),
   status: text("status").notNull().default("pending"), // pending, analyzing, completed, failed
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   completedAt: timestamp("completed_at"),
