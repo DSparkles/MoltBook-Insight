@@ -54,12 +54,14 @@ shared/
 
 ## Important Notes
 
-### Demo Mode
-Moltbook does not provide a public API. The current implementation uses sample data that reflects the categories from the Moltbook Research proposal:
-- Cohesive replies (philosophical, defensive, constructive)
-- Spam replies (promotions, bots, trolling)
+### Real Scraping with Puppeteer
+The app uses Puppeteer (headless Chrome) to visit Moltbook post URLs and extract real content. When you submit a Moltbook post URL, the scraper:
+1. Opens the page in headless Chrome
+2. Waits for content to load
+3. Extracts the post title, content, and replies
+4. AI analyzes each reply on 5 dimensions
 
-The AI analysis is real - each sample reply is evaluated by the AI model.
+Note: Some posts may have few or no replies. Try posts from the main feed (https://www.moltbook.com/m) that show reply counts.
 
 ### Running the App
 ```bash
