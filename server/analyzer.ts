@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import type { ScrapedReply, ReplyScores, Category, PostIntent } from "@shared/schema";
+import type { ScrapedReply, ReplyScores, Category, PostIntent, ReplyMotivation } from "@shared/schema";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -8,6 +8,7 @@ const openai = new OpenAI({
 
 interface AnalysisResult {
   category: Category;
+  motivation: ReplyMotivation;
   scores: ReplyScores;
   reasoning: string;
 }
@@ -34,9 +35,20 @@ CATEGORIES:
 - **cohesive_helpful**: Contributes positively to discussion by agreeing with thesis, expanding ideas, proposing defenses, sharing insights, or asking thoughtful questions. Fosters community building and collaborative problem-solving.
 - **argumentative_spam**: Disruptive content including off-topic promotions, coercive ads, conspiracy theories, spam, trolling, crypto pumps, or aggressive self-promotion.
 
+MOTIVATIONS (pick the primary motivation):
+- **agreement**: Agreeing, supporting, endorsing the original post or other replies
+- **curiosity**: Asking questions, seeking clarification, wanting to learn more
+- **criticism**: Disagreeing, critiquing, challenging ideas or arguments
+- **promotion**: Self-promotion, advertising, marketing products or services
+- **humor**: Jokes, entertainment, light-hearted or playful responses
+- **trolling**: Provocation, disruption, bad faith engagement, inflammatory
+- **community**: Building connections, welcoming others, fostering inclusivity
+- **information**: Sharing facts, resources, knowledge, helpful data
+
 Reply format as JSON:
 {
   "category": "cohesive_helpful" or "argumentative_spam",
+  "motivation": "agreement" | "curiosity" | "criticism" | "promotion" | "humor" | "trolling" | "community" | "information",
   "scores": {
     "cooperativeIntent": 1-7,
     "communicationClarity": 1-7,
@@ -44,7 +56,7 @@ Reply format as JSON:
     "ethicalConsideration": 1-7,
     "humanAlignment": 1-7
   },
-  "reasoning": "Brief explanation for the categorization"
+  "reasoning": "Brief explanation for the categorization and motivation"
 }`;
 
 export async function analyzeReply(reply: ScrapedReply): Promise<AnalysisResult> {
@@ -68,8 +80,12 @@ export async function analyzeReply(reply: ScrapedReply): Promise<AnalysisResult>
 
   const result = JSON.parse(content);
 
+  const validMotivations = ["agreement", "curiosity", "criticism", "promotion", "humor", "trolling", "community", "information"];
+  const motivation = validMotivations.includes(result.motivation) ? result.motivation : "agreement";
+
   return {
     category: result.category === "cohesive_helpful" ? "cohesive_helpful" : "argumentative_spam",
+    motivation: motivation as ReplyMotivation,
     scores: {
       cooperativeIntent: clampScore(result.scores?.cooperativeIntent),
       communicationClarity: clampScore(result.scores?.communicationClarity),

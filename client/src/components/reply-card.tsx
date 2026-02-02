@@ -16,36 +16,56 @@ const dimensionLabels: Record<string, string> = {
   humanAlignment: "Human Alignment",
 };
 
+const motivationLabels: Record<string, string> = {
+  agreement: "Agreement",
+  curiosity: "Curiosity",
+  criticism: "Criticism",
+  promotion: "Promotion",
+  humor: "Humor",
+  trolling: "Trolling",
+  community: "Community",
+  information: "Information",
+};
+
 export function ReplyCard({ reply }: ReplyCardProps) {
   const isCohesive = reply.category === "cohesive_helpful";
   const scores = reply.scores as Record<string, number>;
+  const motivationLabel = reply.motivation ? motivationLabels[reply.motivation] : null;
 
   return (
     <Card data-testid={`reply-card-${reply.id}`} className="overflow-hidden">
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
               <User className="w-4 h-4 text-muted-foreground" />
             </div>
             <CardTitle className="text-base truncate">u/{reply.author}</CardTitle>
           </div>
-          <Badge
-            variant={isCohesive ? "default" : "destructive"}
-            className="shrink-0"
-          >
-            {isCohesive ? (
-              <>
-                <CheckCircle2 className="w-3 h-3 mr-1" />
-                Cohesive
-              </>
-            ) : (
-              <>
-                <XCircle className="w-3 h-3 mr-1" />
-                Spam
-              </>
+          <div className="flex items-center gap-2 flex-wrap">
+            {motivationLabel && (
+              <Badge variant="secondary" data-testid={`badge-motivation-${reply.id}`}>
+                {motivationLabel}
+              </Badge>
             )}
-          </Badge>
+            <Badge
+              variant={isCohesive ? "default" : "destructive"}
+              className="shrink-0"
+              data-testid={`badge-category-${reply.id}`}
+            >
+              {isCohesive ? (
+                <>
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  Cohesive
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-3 h-3 mr-1" />
+                  Spam
+                </>
+              )}
+            </Badge>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

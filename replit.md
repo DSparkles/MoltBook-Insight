@@ -15,6 +15,9 @@ Each reply is evaluated on 5 dimensions using a 1-7 Likert scale:
 4. Ethical Consideration
 5. Alignment with Human Intent
 
+Each reply also has a **motivation** classification:
+- Agreement, Curiosity, Criticism, Promotion, Humor, Trolling, Community, Information
+
 ## Tech Stack
 
 - **Frontend**: React, TanStack Query, Wouter, Recharts, Tailwind CSS, Shadcn UI
@@ -29,9 +32,10 @@ client/src/
 │   ├── home.tsx          # Homepage with URL input and recent analyses
 │   └── analysis.tsx      # Analysis results page with charts
 ├── components/
-│   ├── reply-card.tsx    # Individual reply with scores
-│   ├── category-pie-chart.tsx  # Category distribution
-│   └── score-radar.tsx   # Radar chart for average scores
+│   ├── reply-card.tsx           # Individual reply with scores and motivation
+│   ├── category-pie-chart.tsx   # Category distribution chart
+│   ├── motivation-pie-chart.tsx # Motivation distribution chart
+│   └── score-radar.tsx          # Radar chart for average scores
 └── App.tsx               # Routes and providers
 
 server/
@@ -50,6 +54,7 @@ shared/
 - `GET /api/analyses` - List all analyses
 - `POST /api/analyses` - Create new analysis (body: `{ postUrl: string }`)
 - `GET /api/analyses/:id` - Get analysis with all reply data
+- `GET /api/analyses/:id/export` - Download analysis as CSV
 - `DELETE /api/analyses/:id` - Delete an analysis
 - `GET /api/overall-stats` - Get aggregated stats across all completed analyses
 

@@ -148,7 +148,7 @@ export async function registerRoutes(
       }
 
       csvRows.push("Reply Analysis");
-      csvRows.push("Author,Category,Cooperative Intent,Clarity,Knowledge Sharing,Ethics,Human Alignment,Reasoning,Content");
+      csvRows.push("Author,Category,Motivation,Cooperative Intent,Clarity,Knowledge Sharing,Ethics,Human Alignment,Reasoning,Content");
       
       for (const reply of replies) {
         const content = reply.content.replace(/[\n\r]/g, " ").replace(/,/g, ";").slice(0, 200);
@@ -156,6 +156,7 @@ export async function registerRoutes(
         csvRows.push([
           reply.author,
           reply.category === "cohesive_helpful" ? "Cohesive & Helpful" : "Argumentative & Spam",
+          reply.motivation || "N/A",
           reply.scores.cooperativeIntent,
           reply.scores.communicationClarity,
           reply.scores.knowledgeSharing,
@@ -234,6 +235,7 @@ async function processAnalysis(analysisId: number, postUrl: string): Promise<voi
           author: reply.author,
           content: reply.content.slice(0, 5000),
           category: result.category,
+          motivation: result.motivation,
           scores: result.scores,
           reasoning: result.reasoning,
         });

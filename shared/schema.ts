@@ -32,6 +32,19 @@ export type ReplyScores = z.infer<typeof replyScoresSchema>;
 export const categoryEnum = z.enum(["cohesive_helpful", "argumentative_spam"]);
 export type Category = z.infer<typeof categoryEnum>;
 
+// Reply motivation enum
+export const replyMotivationEnum = z.enum([
+  "agreement",       // Agreeing, supporting, endorsing
+  "curiosity",       // Asking questions, seeking clarification
+  "criticism",       // Disagreeing, critiquing, challenging
+  "promotion",       // Self-promotion, advertising, marketing
+  "humor",           // Jokes, entertainment, light-hearted
+  "trolling",        // Provocation, disruption, bad faith
+  "community",       // Building connections, welcoming, inclusive
+  "information",     // Sharing facts, resources, knowledge
+]);
+export type ReplyMotivation = z.infer<typeof replyMotivationEnum>;
+
 // Scraped reply data
 export const scrapedReplySchema = z.object({
   author: z.string(),
@@ -90,6 +103,7 @@ export const replyAnalyses = pgTable("reply_analyses", {
   author: text("author").notNull(),
   content: text("content").notNull(),
   category: text("category").notNull(), // cohesive_helpful or argumentative_spam
+  motivation: text("motivation"), // reply motivation type
   scores: jsonb("scores").$type<ReplyScores>().notNull(),
   reasoning: text("reasoning"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),

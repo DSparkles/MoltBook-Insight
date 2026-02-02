@@ -25,10 +25,14 @@ import {
   AlertTriangle,
   Users,
   Download,
+  ThumbsUp,
+  ThumbsDown,
+  Heart,
 } from "lucide-react";
 import type { PostAnalysis, ReplyAnalysis, ReplyScores, PostIntent } from "@shared/schema";
 import { ScoreRadar } from "@/components/score-radar";
 import { CategoryPieChart } from "@/components/category-pie-chart";
+import { MotivationPieChart, getMotivationCounts, getSocialInteractionsSummary } from "@/components/motivation-pie-chart";
 import { ReplyCard } from "@/components/reply-card";
 
 interface AnalysisWithReplies extends PostAnalysis {
@@ -293,6 +297,86 @@ export default function AnalysisPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {(() => {
+              const motivationCounts = getMotivationCounts(analysis.replies);
+              const socialSummary = getSocialInteractionsSummary(analysis.replies, motivationCounts);
+              const hasMotivationData = Object.values(motivationCounts).some(v => v > 0);
+
+              return (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Heart className="w-5 h-5" />
+                        Reply Motivations
+                      </CardTitle>
+                      <CardDescription>What drives the replies to this post</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {hasMotivationData ? (
+                        <MotivationPieChart motivations={motivationCounts} />
+                      ) : (
+                        <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
+                          Motivation data not available for older analyses
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="w-5 h-5" />
+                        Social Interactions Summary
+                      </CardTitle>
+                      <CardDescription>Interpretation of community engagement</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {socialSummary.positive.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <ThumbsUp className="w-4 h-4 text-green-600 dark:text-green-400" />
+                              <span className="text-sm font-medium text-green-600 dark:text-green-400">Positive Signals</span>
+                            </div>
+                            <ul className="space-y-1.5">
+                              {socialSummary.positive.map((item, i) => (
+                                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500 mt-0.5 shrink-0" />
+                                  <span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {socialSummary.negative.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <ThumbsDown className="w-4 h-4 text-red-600 dark:text-red-400" />
+                              <span className="text-sm font-medium text-red-600 dark:text-red-400">Areas of Concern</span>
+                            </div>
+                            <ul className="space-y-1.5">
+                              {socialSummary.negative.map((item, i) => (
+                                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+                                  <span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {socialSummary.positive.length === 0 && socialSummary.negative.length === 0 && (
+                          <div className="text-sm text-muted-foreground text-center py-4">
+                            Not enough data to generate social interaction insights
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })()}
 
             <Tabs defaultValue="all" className="w-full">
               <TabsList>
