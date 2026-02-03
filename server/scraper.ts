@@ -8,18 +8,58 @@ interface MoltbookPost {
   replies: ScrapedReply[];
 }
 
+async function launchBrowser() {
+  const chromePaths = [
+    process.env.CHROME_PATH,
+    "/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+    "/usr/bin/google-chrome",
+  ].filter(Boolean) as string[];
+
+  const args = [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-gpu",
+    "--single-process",
+    "--no-zygote",
+    "--disable-features=VizDisplayCompositor",
+  ];
+
+  for (const executablePath of chromePaths) {
+    try {
+      console.log(`Trying Chrome at: ${executablePath}`);
+      const browser = await puppeteer.launch({
+        headless: true,
+        executablePath,
+        args,
+        timeout: 30000,
+      });
+      console.log(`Successfully launched Chrome from: ${executablePath}`);
+      return browser;
+    } catch (err) {
+      console.log(`Failed to launch from ${executablePath}: ${(err as Error).message}`);
+    }
+  }
+
+  console.log("Trying bundled Chromium...");
+  try {
+    const browser = await puppeteer.launch({
+      headless: true,
+      args,
+      timeout: 30000,
+    });
+    console.log("Successfully launched bundled Chromium");
+    return browser;
+  } catch (err) {
+    console.error(`Bundled Chromium failed: ${(err as Error).message}`);
+    throw new Error("Could not launch any browser. Scraping is not available in this environment.");
+  }
+}
+
 export async function scrapePost(postUrl: string): Promise<MoltbookPost> {
-  const browser = await puppeteer.launch({
-    headless: true,
-    executablePath: process.env.CHROME_PATH || "/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium",
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--single-process",
-    ],
-  });
+  const browser = await launchBrowser();
 
   try {
     const page = await browser.newPage();
