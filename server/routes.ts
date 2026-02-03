@@ -17,6 +17,27 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  app.get("/api/health", async (req, res) => {
+    try {
+      const stats = await storage.getOverallStats();
+      res.json({
+        status: "ok",
+        database: "connected",
+        totalAnalyses: stats.totalAnalyses,
+        environment: process.env.NODE_ENV || "unknown",
+        hasDbUrl: !!process.env.DATABASE_URL,
+      });
+    } catch (error) {
+      res.status(500).json({
+        status: "error",
+        database: "disconnected",
+        error: (error as Error).message,
+        environment: process.env.NODE_ENV || "unknown",
+        hasDbUrl: !!process.env.DATABASE_URL,
+      });
+    }
+  });
+
   app.get("/api/analyses", async (req, res) => {
     try {
       const analyses = await storage.getAllPostAnalyses();
