@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Brain, MessageSquare, BookOpen, Shield, Heart } from "lucide-react";
+import { ArrowLeft, Users, Sparkles, BarChart3, Download } from "lucide-react";
 
 export default function About() {
   return (
@@ -34,9 +34,8 @@ export default function About() {
                 becomes crucial for maintaining healthy digital ecosystems.
               </p>
               <p className="text-muted-foreground">
-                This tool helps identify whether replies to posts are <strong>socially cohesive and helpful</strong> 
-                (contributing positively to discussions) or <strong>argumentative and spam</strong> 
-                (disruptive content including promotions, bots, and trolling).
+                This tool analyzes posts and their replies to understand the motivations behind 
+                interactions and identify patterns in how AI agents communicate with each other.
               </p>
             </CardContent>
           </Card>
@@ -56,13 +55,13 @@ export default function About() {
                   <strong>Content Extraction</strong> - The system visits the post and extracts all replies using web scraping
                 </li>
                 <li>
-                  <strong>AI Analysis</strong> - Each reply is evaluated by GPT-5-mini on 5 key dimensions using a 1-7 Likert scale
+                  <strong>AI Analysis</strong> - Each reply is evaluated by AI to understand its intent and motivation
                 </li>
                 <li>
-                  <strong>Categorization</strong> - Based on the scores, replies are categorized as helpful or spam
+                  <strong>Motivation Detection</strong> - Replies are classified by their primary motivation (agreement, curiosity, criticism, etc.)
                 </li>
                 <li>
-                  <strong>Aggregation</strong> - Overall statistics are computed across all analyzed posts to show platform trends
+                  <strong>Social Insights</strong> - The analysis provides insights into the social dynamics of the discussion
                 </li>
               </ol>
             </CardContent>
@@ -70,21 +69,19 @@ export default function About() {
         </section>
 
         <section className="mb-8">
-          <h2 className="text-xl font-semibold mb-4" data-testid="text-dimensions-title">The 5 Analysis Dimensions</h2>
-          <div className="grid gap-4">
+          <h2 className="text-xl font-semibold mb-4" data-testid="text-features-title">Features</h2>
+          <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-start gap-4">
                   <div className="p-2 rounded-lg bg-blue-500/10">
-                    <MessageSquare className="h-6 w-6 text-blue-500" />
+                    <Users className="h-6 w-6 text-blue-500" />
                   </div>
                   <div>
-                    <h3 className="font-semibold mb-1" data-testid="text-dimension-cooperative">1. Cooperative Intent</h3>
+                    <h3 className="font-semibold mb-1" data-testid="text-feature-motivation">Motivation Analysis</h3>
                     <p className="text-sm text-muted-foreground">
-                      Measures whether the reply aims to collaborate, support, or engage constructively 
-                      with others. High scores indicate genuine attempts to help, build consensus, or 
-                      advance the discussion. Low scores suggest adversarial, dismissive, or 
-                      self-serving behavior.
+                      Understand why agents respond the way they do - whether for agreement, 
+                      curiosity, criticism, promotion, humor, community building, or sharing information.
                     </p>
                   </div>
                 </div>
@@ -95,14 +92,13 @@ export default function About() {
               <CardContent className="pt-6">
                 <div className="flex items-start gap-4">
                   <div className="p-2 rounded-lg bg-green-500/10">
-                    <Brain className="h-6 w-6 text-green-500" />
+                    <Sparkles className="h-6 w-6 text-green-500" />
                   </div>
                   <div>
-                    <h3 className="font-semibold mb-1" data-testid="text-dimension-clarity">2. Communication Clarity</h3>
+                    <h3 className="font-semibold mb-1" data-testid="text-feature-insights">Social Insights</h3>
                     <p className="text-sm text-muted-foreground">
-                      Evaluates how clearly and effectively the message is expressed. High scores 
-                      indicate well-structured, readable, and unambiguous communication. Low scores 
-                      suggest confusing, rambling, or poorly articulated responses.
+                      Get a summary of positive signals and areas of concern in the discussion, 
+                      helping you understand the overall health of the conversation.
                     </p>
                   </div>
                 </div>
@@ -113,14 +109,13 @@ export default function About() {
               <CardContent className="pt-6">
                 <div className="flex items-start gap-4">
                   <div className="p-2 rounded-lg bg-purple-500/10">
-                    <BookOpen className="h-6 w-6 text-purple-500" />
+                    <BarChart3 className="h-6 w-6 text-purple-500" />
                   </div>
                   <div>
-                    <h3 className="font-semibold mb-1" data-testid="text-dimension-knowledge">3. Knowledge/Resource Sharing</h3>
+                    <h3 className="font-semibold mb-1" data-testid="text-feature-charts">Visual Charts</h3>
                     <p className="text-sm text-muted-foreground">
-                      Assesses whether the reply provides useful information, references, resources, 
-                      or actionable insights. High scores indicate substantive contributions that add 
-                      value. Low scores suggest empty responses with no informational content.
+                      Interactive pie charts and visual breakdowns make it easy to understand 
+                      the distribution of motivations and social patterns at a glance.
                     </p>
                   </div>
                 </div>
@@ -131,34 +126,13 @@ export default function About() {
               <CardContent className="pt-6">
                 <div className="flex items-start gap-4">
                   <div className="p-2 rounded-lg bg-amber-500/10">
-                    <Shield className="h-6 w-6 text-amber-500" />
+                    <Download className="h-6 w-6 text-amber-500" />
                   </div>
                   <div>
-                    <h3 className="font-semibold mb-1" data-testid="text-dimension-ethical">4. Ethical Consideration</h3>
+                    <h3 className="font-semibold mb-1" data-testid="text-feature-export">CSV Export</h3>
                     <p className="text-sm text-muted-foreground">
-                      Measures awareness and engagement with ethical implications, potential harms, 
-                      or moral dimensions of the topic. High scores show thoughtful consideration of 
-                      consequences and responsibilities. Low scores indicate disregard for ethical 
-                      aspects or promotion of harmful ideas.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-4">
-                  <div className="p-2 rounded-lg bg-rose-500/10">
-                    <Heart className="h-6 w-6 text-rose-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-1" data-testid="text-dimension-alignment">5. Alignment with Human Intent</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Evaluates whether the reply serves broadly beneficial human-aligned outcomes. 
-                      High scores indicate responses that respect human values, autonomy, and 
-                      wellbeing. Low scores suggest content that works against human interests or 
-                      promotes harmful outcomes.
+                      Download complete analysis data as a CSV file for further analysis, 
+                      record-keeping, or integration with other tools.
                     </p>
                   </div>
                 </div>
@@ -170,34 +144,44 @@ export default function About() {
         <section className="mb-8">
           <Card>
             <CardHeader>
-              <CardTitle data-testid="text-scoring-title">Scoring & Categories</CardTitle>
+              <CardTitle data-testid="text-motivations-title">Reply Motivations</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
-                Each dimension is scored on a <strong>1-7 Likert scale</strong>:
+            <CardContent>
+              <p className="text-muted-foreground mb-4">
+                Each reply is analyzed to determine its primary motivation:
               </p>
-              <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-                <li><strong>1-2:</strong> Very poor / Strongly negative</li>
-                <li><strong>3:</strong> Below average / Somewhat negative</li>
-                <li><strong>4:</strong> Neutral / Average</li>
-                <li><strong>5:</strong> Above average / Somewhat positive</li>
-                <li><strong>6-7:</strong> Excellent / Strongly positive</li>
-              </ul>
-              <p className="text-muted-foreground mt-4">
-                Based on these scores, each reply is categorized as:
-              </p>
-              <div className="grid grid-cols-2 gap-4 mt-2">
-                <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-                  <h4 className="font-medium text-green-600 dark:text-green-400">Socially Cohesive & Helpful</h4>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Replies that contribute positively to discussions
-                  </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <h4 className="font-medium text-sm">Agreement</h4>
+                  <p className="text-xs text-muted-foreground">Supporting or endorsing ideas</p>
                 </div>
-                <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
-                  <h4 className="font-medium text-red-600 dark:text-red-400">Argumentative & Spam</h4>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Disruptive content including promotions, bots, trolling
-                  </p>
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <h4 className="font-medium text-sm">Curiosity</h4>
+                  <p className="text-xs text-muted-foreground">Asking questions or seeking clarity</p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <h4 className="font-medium text-sm">Criticism</h4>
+                  <p className="text-xs text-muted-foreground">Disagreeing or challenging ideas</p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <h4 className="font-medium text-sm">Promotion</h4>
+                  <p className="text-xs text-muted-foreground">Self-promotion or advertising</p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <h4 className="font-medium text-sm">Humor</h4>
+                  <p className="text-xs text-muted-foreground">Jokes or entertainment</p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <h4 className="font-medium text-sm">Trolling</h4>
+                  <p className="text-xs text-muted-foreground">Provocation or disruption</p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <h4 className="font-medium text-sm">Community</h4>
+                  <p className="text-xs text-muted-foreground">Building connections</p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <h4 className="font-medium text-sm">Information</h4>
+                  <p className="text-xs text-muted-foreground">Sharing facts or resources</p>
                 </div>
               </div>
             </CardContent>
