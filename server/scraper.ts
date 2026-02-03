@@ -1,4 +1,5 @@
 import puppeteer from "puppeteer";
+import { execSync } from "child_process";
 import type { ScrapedReply } from "@shared/schema";
 
 interface MoltbookPost {
@@ -8,10 +9,34 @@ interface MoltbookPost {
   replies: ScrapedReply[];
 }
 
+function findChromiumPath(): string | null {
+  const commands = [
+    "which chromium",
+    "which chromium-browser", 
+    "which google-chrome",
+    "find /nix -name 'chromium' -type f 2>/dev/null | head -1",
+  ];
+  
+  for (const cmd of commands) {
+    try {
+      const result = execSync(cmd, { encoding: "utf-8", timeout: 5000 }).trim();
+      if (result && result.length > 0) {
+        console.log(`Found Chromium via "${cmd}": ${result}`);
+        return result;
+      }
+    } catch {
+      // Command failed, try next
+    }
+  }
+  return null;
+}
+
 async function launchBrowser() {
+  const dynamicPath = findChromiumPath();
+  
   const chromePaths = [
     process.env.CHROME_PATH,
-    "/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium",
+    dynamicPath,
     "/usr/bin/chromium",
     "/usr/bin/chromium-browser",
     "/usr/bin/google-chrome",
