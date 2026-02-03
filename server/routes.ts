@@ -5,6 +5,8 @@ import { storage } from "./storage";
 import { scrapePost } from "./scraper";
 import { analyzeReply, analyzePost, calculateAverageScores } from "./analyzer";
 import type { ReplyScores } from "@shared/schema";
+import fs from "fs";
+import path from "path";
 
 const createAnalysisSchema = z.object({
   postUrl: z.string().url().refine(
@@ -35,6 +37,50 @@ export async function registerRoutes(
         environment: process.env.NODE_ENV || "unknown",
         hasDbUrl: !!process.env.DATABASE_URL,
       });
+    }
+  });
+
+  app.post("/api/seed", async (req, res) => {
+    try {
+      const stats = await storage.getOverallStats();
+      if (stats.totalAnalyses > 0) {
+        return res.json({ 
+          message: "Database already has data", 
+          totalAnalyses: stats.totalAnalyses 
+        });
+      }
+
+      const seedPath = path.join(process.cwd(), "server", "seed-data", "analyses.json");
+      if (!fs.existsSync(seedPath)) {
+        return res.status(404).json({ error: "Seed file not found" });
+      }
+
+      const seedData = JSON.parse(fs.readFileSync(seedPath, "utf-8"));
+      let seeded = 0;
+
+      for (const analysis of seedData) {
+        await storage.createPostAnalysis({
+          postUrl: analysis.postUrl,
+          postTitle: analysis.postTitle,
+          postAuthor: analysis.postAuthor,
+          postContent: analysis.postContent,
+          totalReplies: analysis.totalReplies,
+          cohesiveCount: analysis.cohesiveCount,
+          spamCount: analysis.spamCount,
+          averageScores: analysis.averageScores,
+          status: analysis.status,
+          postIntent: analysis.postIntent || null,
+        });
+        seeded++;
+      }
+
+      res.json({ 
+        message: "Database seeded successfully", 
+        seededCount: seeded 
+      });
+    } catch (error) {
+      console.error("Seed error:", error);
+      res.status(500).json({ error: (error as Error).message });
     }
   });
 
