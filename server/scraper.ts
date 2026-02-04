@@ -1,4 +1,3 @@
-import puppeteer from "puppeteer";
 import { execSync } from "child_process";
 import type { ScrapedReply } from "@shared/schema";
 
@@ -32,6 +31,8 @@ function findChromiumPath(): string | null {
 }
 
 async function launchBrowser() {
+  const puppeteer = await import("puppeteer").then(m => m.default);
+  
   const dynamicPath = findChromiumPath();
   
   const chromePaths = [
