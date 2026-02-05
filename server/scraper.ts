@@ -31,7 +31,7 @@ function findChromiumPath(): string | null {
 }
 
 async function launchBrowser() {
-  const puppeteer = await import("puppeteer").then(m => m.default);
+  const puppeteer = await import("puppeteer-core").then(m => m.default);
   
   const dynamicPath = findChromiumPath();
   
