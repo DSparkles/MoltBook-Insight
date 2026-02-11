@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, BarChart3, MessageSquare, TrendingUp, Clock, ChevronRight, Info, Globe } from "lucide-react";
+import { Loader2, Search, BarChart3, MessageSquare, TrendingUp, Clock, ChevronRight, Info, Globe, Download } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { PostAnalysis, ReplyScores } from "@shared/schema";
 import { CategoryPieChart } from "@/components/category-pie-chart";
@@ -69,12 +69,20 @@ export default function Home() {
           <p className="text-muted-foreground max-w-xl mx-auto text-lg">
             AI-powered analysis of Moltbook post replies. Evaluate cooperative intent, communication clarity, and more across 5 key dimensions.
           </p>
-          <Link href="/about">
-            <Button variant="ghost" className="mt-2" data-testid="link-about">
-              <Info className="w-4 h-4 mr-1" />
-              Learn about the 5 dimensions
-            </Button>
-          </Link>
+          <div className="flex items-center justify-center gap-2 flex-wrap mt-2">
+            <Link href="/about">
+              <Button variant="ghost" data-testid="link-about">
+                <Info className="w-4 h-4 mr-1" />
+                Learn about the 5 dimensions
+              </Button>
+            </Link>
+            <a href="/api/export-all" download>
+              <Button variant="outline" data-testid="button-export-all">
+                <Download className="w-4 h-4 mr-1" />
+                Export All Data (CSV)
+              </Button>
+            </a>
+          </div>
         </div>
 
         <Card className="mb-8">

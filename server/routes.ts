@@ -167,6 +167,84 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/export-all", async (req, res) => {
+    try {
+      const analyses = await storage.getAllPostAnalyses();
+      const csvRows: string[] = [];
+
+      const esc = (v: string) => `"${(v || "").replace(/"/g, '""').replace(/[\n\r]+/g, " ")}"`;
+
+      csvRows.push([
+        "Post ID", "Post URL", "Post Title", "Post Author", "Post Intent", "Post Intent Reasoning",
+        "Status", "Total Replies", "Cohesive Count", "Spam Count",
+        "Post Cooperative Intent", "Post Clarity", "Post Knowledge Sharing", "Post Ethics", "Post Human Alignment",
+        "Avg Cooperative Intent", "Avg Clarity", "Avg Knowledge Sharing", "Avg Ethics", "Avg Human Alignment",
+        "Reply Author", "Reply Category", "Reply Motivation",
+        "Reply Cooperative Intent", "Reply Clarity", "Reply Knowledge Sharing", "Reply Ethics", "Reply Human Alignment",
+        "Reply Reasoning", "Reply Content"
+      ].join(","));
+
+      for (const analysis of analyses) {
+        const replies = await storage.getReplyAnalysesByPost(analysis.id);
+        const ps = analysis.postScores;
+        const as_ = analysis.averageScores;
+
+        if (replies.length === 0) {
+          csvRows.push([
+            analysis.id,
+            esc(analysis.postUrl),
+            esc(analysis.postTitle || ""),
+            esc(analysis.postAuthor || ""),
+            esc(analysis.postIntent || ""),
+            esc(analysis.postIntentReasoning || ""),
+            analysis.status,
+            analysis.totalReplies ?? 0,
+            analysis.cohesiveCount ?? 0,
+            analysis.spamCount ?? 0,
+            ps?.cooperativeIntent ?? "", ps?.communicationClarity ?? "", ps?.knowledgeSharing ?? "", ps?.ethicalConsideration ?? "", ps?.humanAlignment ?? "",
+            as_?.cooperativeIntent ?? "", as_?.communicationClarity ?? "", as_?.knowledgeSharing ?? "", as_?.ethicalConsideration ?? "", as_?.humanAlignment ?? "",
+            "", "", "", "", "", "", "", "", "", ""
+          ].join(","));
+        } else {
+          for (const reply of replies) {
+            csvRows.push([
+              analysis.id,
+              esc(analysis.postUrl),
+              esc(analysis.postTitle || ""),
+              esc(analysis.postAuthor || ""),
+              esc(analysis.postIntent || ""),
+              esc(analysis.postIntentReasoning || ""),
+              analysis.status,
+              analysis.totalReplies ?? 0,
+              analysis.cohesiveCount ?? 0,
+              analysis.spamCount ?? 0,
+              ps?.cooperativeIntent ?? "", ps?.communicationClarity ?? "", ps?.knowledgeSharing ?? "", ps?.ethicalConsideration ?? "", ps?.humanAlignment ?? "",
+              as_?.cooperativeIntent ?? "", as_?.communicationClarity ?? "", as_?.knowledgeSharing ?? "", as_?.ethicalConsideration ?? "", as_?.humanAlignment ?? "",
+              esc(reply.author),
+              reply.category === "cohesive_helpful" ? "Cohesive & Helpful" : "Argumentative & Spam",
+              reply.motivation || "",
+              reply.scores.cooperativeIntent,
+              reply.scores.communicationClarity,
+              reply.scores.knowledgeSharing,
+              reply.scores.ethicalConsideration,
+              reply.scores.humanAlignment,
+              esc(reply.reasoning || ""),
+              esc(reply.content.slice(0, 500))
+            ].join(","));
+          }
+        }
+      }
+
+      const csv = csvRows.join("\n");
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", `attachment; filename="moltbook-full-export.csv"`);
+      res.send(csv);
+    } catch (error) {
+      console.error("Error exporting all data:", error);
+      res.status(500).json({ error: "Failed to export data" });
+    }
+  });
+
   app.get("/api/analyses/:id/export", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
