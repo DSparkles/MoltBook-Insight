@@ -235,10 +235,12 @@ export async function registerRoutes(
         }
       }
 
-      const csv = csvRows.join("\n");
-      res.setHeader("Content-Type", "text/csv");
-      res.setHeader("Content-Disposition", `attachment; filename="moltbook-full-export.csv"`);
-      res.send(csv);
+      const csv = "\uFEFF" + csvRows.join("\r\n");
+      res.status(200);
+      res.type("text/csv; charset=utf-8");
+      res.set("Content-Disposition", "attachment; filename=moltbook-full-export.csv");
+      res.set("Cache-Control", "no-cache");
+      res.end(csv);
     } catch (error) {
       console.error("Error exporting all data:", error);
       res.status(500).json({ error: "Failed to export data" });

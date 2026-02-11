@@ -76,12 +76,14 @@ export default function Home() {
                 Learn about the 5 dimensions
               </Button>
             </Link>
-            <a href="/api/export-all" download>
-              <Button variant="outline" data-testid="button-export-all">
-                <Download className="w-4 h-4 mr-1" />
-                Export All Data (CSV)
-              </Button>
-            </a>
+            <Button
+              variant="outline"
+              data-testid="button-export-all"
+              onClick={() => { window.location.href = "/api/export-all"; }}
+            >
+              <Download className="w-4 h-4 mr-1" />
+              Export All Data (CSV)
+            </Button>
           </div>
         </div>
 
