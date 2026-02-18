@@ -1,4 +1,3 @@
-import { execSync } from "child_process";
 import type { ScrapedReply } from "@shared/schema";
 
 interface MoltbookPost {
@@ -8,207 +7,66 @@ interface MoltbookPost {
   replies: ScrapedReply[];
 }
 
-function findChromiumPath(): string | null {
-  const commands = [
-    "which chromium",
-    "which chromium-browser", 
-    "which google-chrome",
-    "find /nix -name 'chromium' -type f 2>/dev/null | head -1",
-  ];
-  
-  for (const cmd of commands) {
-    try {
-      const result = execSync(cmd, { encoding: "utf-8", timeout: 5000 }).trim();
-      if (result && result.length > 0) {
-        console.log(`Found Chromium via "${cmd}": ${result}`);
-        return result;
-      }
-    } catch {
-      // Command failed, try next
-    }
+const API_BASE = "https://www.moltbook.com/api/v1";
+
+function extractPostId(postUrl: string): string {
+  const match = postUrl.match(/\/post\/([a-zA-Z0-9_-]+)/);
+  if (!match) {
+    throw new Error("Invalid Moltbook post URL. Expected format: https://www.moltbook.com/post/{id}");
   }
-  return null;
-}
-
-async function launchBrowser() {
-  const puppeteer = await import("puppeteer-core").then(m => m.default);
-  
-  const dynamicPath = findChromiumPath();
-  
-  const chromePaths = [
-    process.env.CHROME_PATH,
-    dynamicPath,
-    "/usr/bin/chromium",
-    "/usr/bin/chromium-browser",
-    "/usr/bin/google-chrome",
-  ].filter(Boolean) as string[];
-
-  const args = [
-    "--no-sandbox",
-    "--disable-setuid-sandbox",
-    "--disable-dev-shm-usage",
-    "--disable-gpu",
-    "--single-process",
-    "--no-zygote",
-    "--disable-features=VizDisplayCompositor",
-  ];
-
-  for (const executablePath of chromePaths) {
-    try {
-      console.log(`Trying Chrome at: ${executablePath}`);
-      const browser = await puppeteer.launch({
-        headless: true,
-        executablePath,
-        args,
-        timeout: 30000,
-      });
-      console.log(`Successfully launched Chrome from: ${executablePath}`);
-      return browser;
-    } catch (err) {
-      console.log(`Failed to launch from ${executablePath}: ${(err as Error).message}`);
-    }
-  }
-
-  console.log("Trying bundled Chromium...");
-  try {
-    const browser = await puppeteer.launch({
-      headless: true,
-      args,
-      timeout: 30000,
-    });
-    console.log("Successfully launched bundled Chromium");
-    return browser;
-  } catch (err) {
-    console.error(`Bundled Chromium failed: ${(err as Error).message}`);
-    throw new Error("Could not launch any browser. Scraping is not available in this environment.");
-  }
+  return match[1];
 }
 
 export async function scrapePost(postUrl: string): Promise<MoltbookPost> {
-  const browser = await launchBrowser();
+  const postId = extractPostId(postUrl);
+  console.log(`Fetching post ${postId} from Moltbook API...`);
 
-  try {
-    const page = await browser.newPage();
-    
-    await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    );
-
-    console.log(`Scraping: ${postUrl}`);
-    
-    await page.goto(postUrl, { 
-      waitUntil: "networkidle2",
-      timeout: 30000,
-    });
-
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
-    const title = await page.$eval("h1", (el) => el.textContent?.trim() || "").catch(() => 
-      page.$eval("h2", (el) => el.textContent?.trim() || "").catch(() => "Moltbook Post")
-    );
-
-    console.log(`Found title: ${title}`);
-
-    const content = await page.evaluate(() => {
-      const mainContent = document.querySelector("main, article, .post, .content");
-      if (mainContent) {
-        const paragraphs = mainContent.querySelectorAll("p");
-        if (paragraphs.length > 0) {
-          return Array.from(paragraphs).slice(0, 5).map(p => p.textContent?.trim() || "").join(" ");
-        }
-      }
-      const firstProse = document.querySelector(".prose");
-      if (firstProse) {
-        return firstProse.textContent?.trim().slice(0, 1500) || "";
-      }
-      const allP = document.querySelectorAll("p");
-      return Array.from(allP).slice(0, 3).map(p => p.textContent?.trim() || "").join(" ");
-    });
-
-    console.log(`Found content length: ${content.length}`);
-
-    const replies: Array<{ author: string; content: string; votes: number }> = [];
-
-    const extractedReplies = await page.evaluate(() => {
-      const results: Array<{ author: string; content: string; votes: number }> = [];
-      
-      const proseElements = document.querySelectorAll(".prose");
-      
-      proseElements.forEach((el, idx) => {
-        if (idx === 0) return;
-        
-        const text = el.textContent?.trim() || "";
-        if (text.length > 10 && text.length < 3000) {
-          const parentContainer = el.closest("div[class*='border'], div[class*='rounded'], div[class*='bg-']");
-          
-          let author = "Anonymous";
-          if (parentContainer) {
-            const imgEl = parentContainer.querySelector("img[alt]") as HTMLImageElement;
-            if (imgEl?.alt) {
-              author = imgEl.alt.slice(0, 50);
-            }
-          }
-          
-          if (!results.some(r => r.content === text)) {
-            results.push({
-              author,
-              content: text.slice(0, 1500),
-              votes: 0,
-            });
-          }
-        }
-      });
-
-      if (results.length === 0) {
-        const replySelectors = [
-          "[class*='Comment']",
-          "[class*='comment']",
-          "[class*='Reply']",
-          "[class*='reply']",
-          "[class*='response']",
-        ];
-        
-        for (const selector of replySelectors) {
-          const elements = document.querySelectorAll(selector);
-          elements.forEach((el) => {
-            const text = el.textContent?.trim() || "";
-            if (text.length > 10 && text.length < 3000 && !results.some(r => r.content === text)) {
-              const authorEl = el.querySelector("[class*='author'], [class*='user'], [class*='name'], img[alt]");
-              const author = (authorEl as HTMLImageElement)?.alt || 
-                            authorEl?.textContent?.trim()?.slice(0, 50) || 
-                            "Anonymous";
-              
-              results.push({
-                author,
-                content: text.slice(0, 1500),
-                votes: 0,
-              });
-            }
-          });
-        }
-      }
-
-      return results;
-    });
-
-    replies.push(...extractedReplies);
-    console.log(`Found ${replies.length} replies`);
-
-    if (title.toLowerCase().includes("not found") || title.toLowerCase().includes("404")) {
-      throw new Error("Post not found. This post may have been deleted or the URL is incorrect.");
+  const postRes = await fetch(`${API_BASE}/posts/${postId}`);
+  if (!postRes.ok) {
+    if (postRes.status === 404) {
+      throw new Error("Post not found. It may have been deleted or the URL is incorrect.");
     }
-
-    if (replies.length === 0 && content.length < 50) {
-      throw new Error("Could not extract content from the page. The page may require authentication or has an unexpected structure.");
-    }
-
-    return {
-      title: title || "Moltbook Post",
-      author: "Unknown",
-      content: content || "Content from Moltbook post",
-      replies: replies.slice(0, 50),
-    };
-  } finally {
-    await browser.close();
+    throw new Error(`Moltbook API error: ${postRes.status} ${postRes.statusText}`);
   }
+
+  const postData = await postRes.json();
+  const post = postData.post || postData;
+
+  const title = post.title || "Moltbook Post";
+  const author = post.author?.name || post.author_name || "Unknown";
+  const content = post.content || post.body || post.text || "";
+
+  console.log(`Post: "${title}" by ${author} (${post.comment_count || 0} comments)`);
+
+  const commentsRes = await fetch(`${API_BASE}/posts/${postId}/comments`);
+  const replies: ScrapedReply[] = [];
+
+  if (commentsRes.ok) {
+    const commentsData = await commentsRes.json();
+    const comments = commentsData.comments || [];
+
+    for (const comment of comments.slice(0, 50)) {
+      if (comment.is_deleted) continue;
+
+      const replyAuthor = comment.author?.name || "Anonymous";
+      const replyContent = comment.content || "";
+
+      if (replyContent.length > 0) {
+        replies.push({
+          author: String(replyAuthor).slice(0, 100),
+          content: String(replyContent).slice(0, 5000),
+          votes: comment.score ?? 0,
+        });
+      }
+    }
+  }
+
+  console.log(`Found ${replies.length} replies via API`);
+
+  return {
+    title: String(title).slice(0, 500),
+    author: String(author).slice(0, 100),
+    content: String(content).slice(0, 5000),
+    replies,
+  };
 }

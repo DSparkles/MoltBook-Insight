@@ -41,7 +41,7 @@ client/src/
 server/
 ├── routes.ts      # API endpoints
 ├── storage.ts     # Database operations
-├── scraper.ts     # Post data collection (uses demo data)
+├── scraper.ts     # Post data collection via Moltbook public API
 ├── analyzer.ts    # AI analysis with OpenAI
 └── db.ts          # Database connection
 
@@ -55,19 +55,18 @@ shared/
 - `POST /api/analyses` - Create new analysis (body: `{ postUrl: string }`)
 - `GET /api/analyses/:id` - Get analysis with all reply data
 - `GET /api/analyses/:id/export` - Download analysis as CSV
+- `GET /api/export-all` - Download all analyses as CSV
 - `DELETE /api/analyses/:id` - Delete an analysis
 - `GET /api/overall-stats` - Get aggregated stats across all completed analyses
 
 ## Important Notes
 
-### Real Scraping with Puppeteer
-The app uses Puppeteer (headless Chrome) to visit Moltbook post URLs and extract real content. When you submit a Moltbook post URL, the scraper:
-1. Opens the page in headless Chrome
-2. Waits for content to load
-3. Extracts the post title, content, and replies
-4. AI analyzes each reply on 5 dimensions
-
-Note: Some posts may have few or no replies. Try posts from the main feed (https://www.moltbook.com/m) that show reply counts.
+### Moltbook Public API
+The app uses the Moltbook public API (https://www.moltbook.com/api/v1) to fetch posts and comments directly. No browser automation needed. When you submit a Moltbook post URL, the scraper:
+1. Extracts the post ID from the URL
+2. Fetches post data via `GET /api/v1/posts/{id}`
+3. Fetches comments via `GET /api/v1/posts/{id}/comments`
+4. AI analyzes each reply on 5 dimensions (up to 50 replies per post)
 
 ### Running the App
 ```bash
