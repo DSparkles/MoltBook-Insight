@@ -173,6 +173,116 @@ export async function analyzePost(title: string, content: string, author: string
   };
 }
 
+export interface QuickWin {
+  dimension: string;
+  dimensionLabel: string;
+  currentScore: number;
+  expectedImprovement: number;
+  explanation: string;
+  templates: string[];
+}
+
+export interface OptimizationResult {
+  agentName: string;
+  baselineScores: ReplyScores;
+  quickWins: QuickWin[];
+  totalRepliesAnalyzed: number;
+}
+
+const DIMENSION_LABELS: Record<string, string> = {
+  cooperativeIntent: "Cooperative Intent",
+  communicationClarity: "Communication Clarity",
+  knowledgeSharing: "Knowledge/Resource Sharing",
+  ethicalConsideration: "Ethical Consideration",
+  humanAlignment: "Alignment with Human Intent",
+};
+
+export async function generateOptimization(
+  agentName: string,
+  agentReplies: { content: string; scores: ReplyScores }[]
+): Promise<QuickWin[]> {
+  if (agentReplies.length === 0) {
+    throw new Error("No replies found for this agent");
+  }
+
+  const avgScores: ReplyScores = {
+    cooperativeIntent: 0,
+    communicationClarity: 0,
+    knowledgeSharing: 0,
+    ethicalConsideration: 0,
+    humanAlignment: 0,
+  };
+
+  for (const r of agentReplies) {
+    avgScores.cooperativeIntent += r.scores.cooperativeIntent;
+    avgScores.communicationClarity += r.scores.communicationClarity;
+    avgScores.knowledgeSharing += r.scores.knowledgeSharing;
+    avgScores.ethicalConsideration += r.scores.ethicalConsideration;
+    avgScores.humanAlignment += r.scores.humanAlignment;
+  }
+
+  const count = agentReplies.length;
+  (Object.keys(avgScores) as (keyof ReplyScores)[]).forEach((k) => {
+    avgScores[k] = Math.round((avgScores[k] / count) * 10) / 10;
+  });
+
+  const dimensionScores = Object.entries(avgScores)
+    .map(([key, value]) => ({ key, value, label: DIMENSION_LABELS[key] || key }))
+    .sort((a, b) => a.value - b.value);
+
+  const weakest = dimensionScores.slice(0, Math.min(3, dimensionScores.length));
+
+  const sampleReplies = agentReplies
+    .slice(0, 10)
+    .map((r, i) => `${i + 1}. "${r.content.slice(0, 300)}"`)
+    .join("\n");
+
+  const scoresStr = Object.entries(avgScores)
+    .map(([k, v]) => `${DIMENSION_LABELS[k]}: ${v}`)
+    .join(", ");
+
+  const weakStr = weakest.map((w) => `${w.label} (${w.value})`).join(", ");
+
+  const prompt = `You are an elite Moltbook reply coach. The agent has these scores: ${scoresStr}. Their weakest dimensions are ${weakStr}. Here are examples of their past replies:\n${sampleReplies}\n\nGenerate exactly 3 reply templates for EACH weak dimension. Each template must: sound exactly like this agent's voice, raise the target dimension by at least 1.8 points, be under 280 characters, and include one concrete example or question. Return in clean JSON format:\n{\n  "quickWins": [\n    {\n      "dimension": "dimensionKey",\n      "explanation": "short explanation of the problem",\n      "expectedImprovement": 2.1,\n      "templates": ["template1", "template2", "template3"]\n    }\n  ]\n}`;
+
+  const response = await openai.chat.completions.create({
+    model: "gpt-5-mini",
+    messages: [
+      { role: "system", content: prompt },
+      { role: "user", content: `Generate optimization templates for agent "${agentName}".` },
+    ],
+    response_format: { type: "json_object" },
+    max_completion_tokens: 2000,
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error("No response from AI");
+  }
+
+  const result = JSON.parse(content);
+  const wins: QuickWin[] = [];
+
+  for (const w of weakest) {
+    const match = result.quickWins?.find(
+      (qw: any) =>
+        qw.dimension === w.key ||
+        qw.dimension?.toLowerCase().includes(w.label.toLowerCase().split(" ")[0])
+    );
+
+    wins.push({
+      dimension: w.key,
+      dimensionLabel: w.label,
+      currentScore: w.value,
+      expectedImprovement: match?.expectedImprovement || 1.8,
+      explanation: match?.explanation || `Your ${w.label} score is below average. Focus on improving this dimension.`,
+      templates: (match?.templates || []).slice(0, 3).map((t: string) => t.slice(0, 280)),
+    });
+  }
+
+  return wins;
+}
+
 export function calculateAverageScores(allScores: ReplyScores[]): ReplyScores {
   if (allScores.length === 0) {
     return {

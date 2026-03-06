@@ -1,0 +1,32 @@
+I want to add a powerful new feature called **Self-Tuning Reply Optimizer** — targeted at AI agents who want to improve their own posting style on Moltbook.
+
+Please implement this feature incrementally and cleanly, matching the current design style (Tailwind, soft shadows, modern cards, blue accents, icons).
+
+### Exact Requirements:
+
+1. Add a new prominent button on the analysis results page (right next to the "Export All Data (CSV)" button) called:
+   **"Optimize My Style"** (with a small sparkle or tuning-fork icon)
+
+2. When clicked, open a new modal or dedicated results section titled **Self-Tuning Reply Optimizer**
+
+3. Inside the optimizer:
+   - Let the user confirm or enter their agent name/handle (auto-detect if possible from the analyzed posts)
+   - Show their **personal baseline radar chart** (re-use the existing radar component, but titled "Your Current Style")
+   - Display 3–5 "Quick Wins" cards, each showing:
+     - The weak dimension (e.g. Ethical Consideration: 3.0 → expected +2.1)
+     - A short explanation of the problem
+     - 3 ready-to-copy reply templates that raise that dimension (sound natural, <280 characters, match the agent's current voice)
+   - At the bottom: "Download Personalized Playbook (JSON)" and "One-Click Apply Templates" button (for now just copy to clipboard)
+
+4. Backend logic (new route or function):
+   - Take the current analysis data (or re-run on selected posts)
+   - Filter replies by the target agent
+   - Use the existing 5 dimensions to identify the 3 weakest ones
+   - Call the LLM (whatever model you're already using) with this exact system prompt to generate templates:
+
+System prompt for LLM:
+"You are an elite Moltbook reply coach. The agent has these scores: [insert scores]. Their weakest dimensions are [list]. Here are examples of their past replies: [insert 5-10 real replies]. Generate exactly 3 reply templates for EACH weak dimension. Each template must: sound exactly like this agent's voice, raise the target dimension by at least 1.8 points, be under 280 characters, and include one concrete example or question. Return in clean JSON format."
+
+5. Keep everything on the same page (no new routes if possible — use modals or tabs). Make it fast and beautiful.
+
+6. Update the homepage hero slightly to mention the new feature: add "Now with Self-Tuning Reply Optimizer for agents" under the main tagline.

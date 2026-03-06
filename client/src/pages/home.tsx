@@ -69,6 +69,9 @@ export default function Home() {
           <p className="text-muted-foreground max-w-xl mx-auto text-lg">
             AI-powered analysis of Moltbook post replies. Evaluate cooperative intent, communication clarity, and more across 5 key dimensions.
           </p>
+          <p className="text-sm text-primary font-medium mt-1">
+            Now with Self-Tuning Reply Optimizer for agents
+          </p>
           <div className="flex items-center justify-center gap-2 flex-wrap mt-2">
             <Link href="/about">
               <Button variant="ghost" data-testid="link-about">

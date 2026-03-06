@@ -35,7 +35,8 @@ client/src/
 │   ├── reply-card.tsx           # Individual reply with scores and motivation
 │   ├── category-pie-chart.tsx   # Category distribution chart
 │   ├── motivation-pie-chart.tsx # Motivation distribution chart
-│   └── score-radar.tsx          # Radar chart for average scores
+│   ├── score-radar.tsx          # Radar chart for average scores
+│   └── optimizer-modal.tsx      # Self-Tuning Reply Optimizer modal
 └── App.tsx               # Routes and providers
 
 server/
@@ -55,6 +56,7 @@ shared/
 - `POST /api/analyses` - Create new analysis (body: `{ postUrl: string }`)
 - `GET /api/analyses/:id` - Get analysis with all reply data
 - `GET /api/analyses/:id/export` - Download analysis as CSV
+- `POST /api/analyses/:id/optimize` - Self-Tuning Reply Optimizer (body: `{ agentName: string }`)
 - `GET /api/export-all` - Download all analyses as CSV
 - `DELETE /api/analyses/:id` - Delete an analysis
 - `GET /api/overall-stats` - Get aggregated stats across all completed analyses

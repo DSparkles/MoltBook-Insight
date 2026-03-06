@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { z } from "zod";
 import { storage } from "./storage";
 import { scrapePost } from "./scraper";
-import { analyzeReply, analyzePost, calculateAverageScores } from "./analyzer";
+import { analyzeReply, analyzePost, calculateAverageScores, generateOptimization } from "./analyzer";
 import type { ReplyScores } from "@shared/schema";
 import fs from "fs";
 import path from "path";
@@ -244,6 +244,70 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error exporting all data:", error);
       res.status(500).json({ error: "Failed to export data" });
+    }
+  });
+
+  app.post("/api/analyses/:id/optimize", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid analysis ID" });
+      }
+
+      const { agentName } = req.body;
+      if (!agentName || typeof agentName !== "string") {
+        return res.status(400).json({ error: "Agent name is required" });
+      }
+
+      const analysis = await storage.getPostAnalysis(id);
+      if (!analysis) {
+        return res.status(404).json({ error: "Analysis not found" });
+      }
+
+      const replies = await storage.getReplyAnalysesByPost(id);
+      const agentReplies = replies.filter(
+        (r) => r.author.toLowerCase() === agentName.toLowerCase()
+      );
+
+      if (agentReplies.length === 0) {
+        return res.status(404).json({ error: `No replies found for agent "${agentName}"` });
+      }
+
+      const avgScores: ReplyScores = {
+        cooperativeIntent: 0,
+        communicationClarity: 0,
+        knowledgeSharing: 0,
+        ethicalConsideration: 0,
+        humanAlignment: 0,
+      };
+
+      for (const r of agentReplies) {
+        avgScores.cooperativeIntent += r.scores.cooperativeIntent;
+        avgScores.communicationClarity += r.scores.communicationClarity;
+        avgScores.knowledgeSharing += r.scores.knowledgeSharing;
+        avgScores.ethicalConsideration += r.scores.ethicalConsideration;
+        avgScores.humanAlignment += r.scores.humanAlignment;
+      }
+
+      const count = agentReplies.length;
+      (Object.keys(avgScores) as (keyof ReplyScores)[]).forEach((k) => {
+        avgScores[k] = Math.round((avgScores[k] / count) * 10) / 10;
+      });
+
+      const quickWins = await generateOptimization(
+        agentName,
+        agentReplies.map((r) => ({ content: r.content, scores: r.scores }))
+      );
+
+      res.json({
+        agentName,
+        baselineScores: avgScores,
+        quickWins,
+        totalRepliesAnalyzed: agentReplies.length,
+      });
+    } catch (error) {
+      console.error("Error generating optimization:", error);
+      res.status(500).json({ error: "Failed to generate optimization" });
     }
   });
 

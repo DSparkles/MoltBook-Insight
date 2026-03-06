@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +35,7 @@ import { ScoreRadar } from "@/components/score-radar";
 import { CategoryPieChart } from "@/components/category-pie-chart";
 import { MotivationPieChart, getMotivationCounts, getSocialInteractionsSummary } from "@/components/motivation-pie-chart";
 import { ReplyCard } from "@/components/reply-card";
+import { OptimizerModal } from "@/components/optimizer-modal";
 
 interface AnalysisWithReplies extends PostAnalysis {
   replies: ReplyAnalysis[];
@@ -53,6 +55,7 @@ export default function AnalysisPage() {
   const [, params] = useRoute("/analysis/:id");
   const [, setLocation] = useLocation();
   const analysisId = params?.id;
+  const [optimizerOpen, setOptimizerOpen] = useState(false);
 
   const { data: analysis, isLoading, refetch, isRefetching } = useQuery<AnalysisWithReplies>({
     queryKey: ["/api/analyses", analysisId],
@@ -122,6 +125,15 @@ export default function AnalysisPage() {
           </Badge>
           {!isProcessing && (
             <>
+              <Button
+                size="sm"
+                onClick={() => setOptimizerOpen(true)}
+                data-testid="button-optimize-style"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                Optimize My Style
+              </Button>
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -422,6 +434,15 @@ export default function AnalysisPage() {
               </TabsContent>
             </Tabs>
           </>
+        )}
+
+        {analysis.replies && (
+          <OptimizerModal
+            open={optimizerOpen}
+            onOpenChange={setOptimizerOpen}
+            analysisId={analysis.id}
+            replies={analysis.replies}
+          />
         )}
       </div>
     </div>
