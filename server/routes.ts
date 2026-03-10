@@ -443,9 +443,7 @@ async function processAnalysis(analysisId: number, postUrl: string): Promise<voi
       for (let attempt = 0; attempt < 3 && !success; attempt++) {
         try {
           if (attempt > 0) {
-            const backoff = 2000 * Math.pow(2, attempt);
-            console.log(`Retry ${attempt}/3 for reply ${i}, waiting ${backoff}ms...`);
-            await new Promise((resolve) => setTimeout(resolve, backoff));
+            await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
           }
 
           const result = await analyzeReply(reply);
@@ -482,7 +480,7 @@ async function processAnalysis(analysisId: number, postUrl: string): Promise<voi
         });
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
 
     await storage.updatePostAnalysis(analysisId, {
