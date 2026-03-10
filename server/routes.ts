@@ -438,39 +438,51 @@ async function processAnalysis(analysisId: number, postUrl: string): Promise<voi
 
     for (let i = 0; i < maxReplies; i++) {
       const reply = postData.replies[i];
-      try {
-        const result = await analyzeReply(reply);
+      let success = false;
 
-        await storage.createReplyAnalysis({
-          postAnalysisId: analysisId,
-          author: reply.author,
-          content: reply.content.slice(0, 5000),
-          category: result.category,
-          motivation: result.motivation,
-          scores: result.scores,
-          reasoning: result.reasoning,
-        });
+      for (let attempt = 0; attempt < 3 && !success; attempt++) {
+        try {
+          if (attempt > 0) {
+            const backoff = 2000 * Math.pow(2, attempt);
+            console.log(`Retry ${attempt}/3 for reply ${i}, waiting ${backoff}ms...`);
+            await new Promise((resolve) => setTimeout(resolve, backoff));
+          }
 
-        allScores.push(result.scores);
+          const result = await analyzeReply(reply);
 
-        if (result.category === "cohesive_helpful") {
-          cohesiveCount++;
-        } else {
-          spamCount++;
-        }
-
-        if (i % 5 === 0) {
-          await storage.updatePostAnalysis(analysisId, {
-            cohesiveCount,
-            spamCount,
-            averageScores: calculateAverageScores(allScores),
+          await storage.createReplyAnalysis({
+            postAnalysisId: analysisId,
+            author: reply.author,
+            content: reply.content.slice(0, 5000),
+            category: result.category,
+            motivation: result.motivation,
+            scores: result.scores,
+            reasoning: result.reasoning,
           });
-        }
 
-        await new Promise((resolve) => setTimeout(resolve, 200));
-      } catch (error) {
-        console.error(`Error analyzing reply ${i}:`, error);
+          allScores.push(result.scores);
+
+          if (result.category === "cohesive_helpful") {
+            cohesiveCount++;
+          } else {
+            spamCount++;
+          }
+
+          success = true;
+        } catch (error) {
+          console.error(`Error analyzing reply ${i} (attempt ${attempt + 1}/3):`, error);
+        }
       }
+
+      if (i % 5 === 0) {
+        await storage.updatePostAnalysis(analysisId, {
+          cohesiveCount,
+          spamCount,
+          averageScores: calculateAverageScores(allScores),
+        });
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 800));
     }
 
     await storage.updatePostAnalysis(analysisId, {
