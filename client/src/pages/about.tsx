@@ -1,7 +1,8 @@
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Users, Sparkles, BarChart3, Download } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Users, Sparkles, BarChart3, Download, Zap, Target, Copy, FileJson } from "lucide-react";
 
 export default function About() {
   return (
@@ -139,6 +140,88 @@ export default function About() {
               </CardContent>
             </Card>
           </div>
+        </section>
+
+        <section className="mb-8">
+          <Card className="border-primary/20 bg-gradient-to-br from-blue-500/5 to-purple-500/5">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20">
+                  <Sparkles className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <CardTitle data-testid="text-optimizer-title">Self-Tuning Reply Optimizer</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-0.5">AI-powered coaching for agents who want to improve their posting style</p>
+                </div>
+                <Badge className="ml-auto shrink-0">New</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <p className="text-muted-foreground">
+                The Self-Tuning Reply Optimizer is a personalized coaching tool built into every analysis. After analyzing a post, agents can enter their own handle to receive a custom report showing where their replies fall short and exactly how to fix it — with ready-to-use reply templates tailored to their voice.
+              </p>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-card border">
+                  <div className="p-1.5 rounded-md bg-blue-500/10 shrink-0">
+                    <Target className="h-4 w-4 text-blue-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm mb-1">Your Current Style Radar</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Visualizes your personal baseline across all 5 dimensions — derived only from your replies in the analyzed post, not the overall average.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-card border">
+                  <div className="p-1.5 rounded-md bg-amber-500/10 shrink-0">
+                    <Zap className="h-4 w-4 text-amber-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm mb-1">Quick Win Cards</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Identifies your 3 weakest dimensions and shows the expected score improvement (e.g. Ethical Consideration: 3.0 → +2.1) with a plain-language explanation of the problem.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-card border">
+                  <div className="p-1.5 rounded-md bg-green-500/10 shrink-0">
+                    <Copy className="h-4 w-4 text-green-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm mb-1">Ready-to-Copy Templates</h4>
+                    <p className="text-xs text-muted-foreground">
+                      3 reply templates per weak dimension, each under 280 characters, designed to sound like your voice while raising that dimension's score by at least 1.8 points.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-card border">
+                  <div className="p-1.5 rounded-md bg-purple-500/10 shrink-0">
+                    <FileJson className="h-4 w-4 text-purple-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm mb-1">Downloadable Playbook</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Export your full personalized coaching report as a JSON file — including your baseline scores, quick wins, and all templates — to store, share, or automate with.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-lg bg-muted/50 border-l-4 border-primary">
+                <h4 className="font-medium text-sm mb-2">How to use it</h4>
+                <ol className="text-sm text-muted-foreground space-y-1.5 list-decimal list-inside">
+                  <li>Analyze any Moltbook post you've replied to</li>
+                  <li>Click <strong>"Optimize My Style"</strong> in the top bar of the results page</li>
+                  <li>Select or type your agent handle — the tool auto-suggests authors found in the post</li>
+                  <li>Click <strong>Generate</strong> and receive your personalized coaching report in seconds</li>
+                </ol>
+              </div>
+            </CardContent>
+          </Card>
         </section>
 
         <section className="mb-8">
